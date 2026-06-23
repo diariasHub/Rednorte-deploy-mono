@@ -128,16 +128,21 @@ export const appointmentsRemote = {
         console.log(`✅ Practitioner/${cleanPractitionerId} registrado.`);
       } catch (e: any) { console.warn("Error en Practitioner:", e.message); }
 
-      // 4. 🕒 CONSTRUCCIÓN DE HORARIOS (Mantener formato ISO UTC)
-      const datePart = dto.date || "2026-06-15";
-      const timePart = dto.slot || "13:00";
-      const isoStart = `${datePart}T${timePart}:00Z`;
-
-      const [hours, minutes] = timePart.split(':').map(Number);
-      const endMinutes = minutes + 30;
-      const endHours = hours + Math.floor(endMinutes / 60);
-      const finalMinutes = endMinutes % 60;
-      const isoEnd = `${datePart}T${String(endHours).padStart(2, '0')}:${String(finalMinutes).padStart(2, '0')}:00Z`;
+      // 4. 🕒 CONSTRUCCIÓN DE HORARIOS (Mantener formato ISO UTC real)
+      let isoStart = dto.start;
+      let isoEnd = dto.end;
+      
+      // Fallback por si no vienen listos (ej. llamadas antiguas)
+      if (!isoStart || !isoEnd) {
+        const datePart = dto.date || "2026-06-15";
+        const timePart = dto.slot || "13:00";
+        // Al usar new Date() sin Z y luego toISOString(), JS usa la zona local correcta
+        const startDate = new Date(`${datePart}T${timePart}:00`);
+        isoStart = startDate.toISOString();
+        
+        const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+        isoEnd = endDate.toISOString();
+      }
 
       // 4. 📅 CREAR CITA
       const fhirAppointment = {

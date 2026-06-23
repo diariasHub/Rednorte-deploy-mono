@@ -27,6 +27,8 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
   const [urgenciasTriaged, setUrgenciasTriaged] = useState<any[]>([]);
   const [urgenciasAltas, setUrgenciasAltas] = useState<any[]>([]);
   const [citasDelDia, setCitasDelDia] = useState<any[]>([]);
+  const [allAppointments, setAllAppointments] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [isIngresoModalOpen, setIsIngresoModalOpen] = useState(false);
   const [ingresoRut, setIngresoRut] = useState('');
@@ -63,16 +65,9 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
       setUrgenciasTriaged(triaged || []);
       setUrgenciasAltas(altas || []);
 
-      // Filtrar citas del día de hoy
-      const today = new Date().toISOString().split('T')[0];
-      // FHIR retorna un Bundle, necesitamos extraer las citas
+      // Guardar todas las citas
       const arrCitas = todasLasCitas?.entry ? todasLasCitas.entry.map((e: any) => e.resource) : (Array.isArray(todasLasCitas) ? todasLasCitas : []);
-      
-      const citasHoy = arrCitas.filter((cita: any) => {
-        if (!cita.start) return false;
-        return cita.start.startsWith(today);
-      });
-      setCitasDelDia(citasHoy);
+      setAllAppointments(arrCitas);
 
     } catch (error) {
       console.error("Error cargando datos del administrador", error);
@@ -85,6 +80,14 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const citasFiltradas = allAppointments.filter((cita: any) => {
+      if (!cita.start) return false;
+      return cita.start.startsWith(selectedDate);
+    });
+    setCitasDelDia(citasFiltradas);
+  }, [selectedDate, allAppointments]);
 
   const handleIngresoUrgencia = async () => {
     if (!ingresoRut || !ingresoMotivo) {
@@ -278,10 +281,16 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
 
       {activeTab === 'agenda' && (
         <Card className="shadow-md border-none">
-          <CardHeader className="bg-white border-b py-4">
+          <CardHeader className="bg-white border-b py-4 flex flex-row justify-between items-center">
             <CardTitle className="text-base font-bold text-[#00a7b1] flex items-center gap-2">
-              <Calendar className="h-5 w-5" /> Agenda Médica Activa para Hoy
+              <Calendar className="h-5 w-5" /> Agenda Médica Activa
             </CardTitle>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 focus:outline-none focus:border-[#00a7b1] focus:ring-1 focus:ring-[#00a7b1] transition-all cursor-pointer hover:bg-slate-100"
+            />
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -297,7 +306,7 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
                   {citasDelDia.length === 0 && (
                     <tr>
                       <td colSpan={3} className="p-8 text-center text-sm text-slate-400">
-                        No hay citas agendadas para hoy.
+                        No hay citas agendadas para esta fecha.
                       </td>
                     </tr>
                   )}
