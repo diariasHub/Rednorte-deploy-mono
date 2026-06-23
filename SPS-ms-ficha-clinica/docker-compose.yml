@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: ms-ficha-clinica-app
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-sweet-paper-ap7u0t4b-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channelBinding=require}
+      spring.datasource.username=${SPRING_DATASOURCE_USERNAME:neondb_owner}
+      spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect

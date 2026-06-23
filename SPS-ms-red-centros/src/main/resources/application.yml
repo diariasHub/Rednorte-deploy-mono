@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: ms-red-centros
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+server:
+  port: 8080
+
+fhir:
+  server:
+    url: ${FHIR_SERVER_URL:http://localhost:8080/fhir}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://ms-service-discovery:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}

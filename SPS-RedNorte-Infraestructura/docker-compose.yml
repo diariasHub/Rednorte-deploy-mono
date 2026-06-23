@@ -1,0 +1,237 @@
+services:
+  # -----------------------------------------------------------
+  # 1. BASE DE DATOS CENTRAL COMPARTIDA (PostgreSQL)
+  # -----------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: rednorte-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - rednorte-network
+
+  # -----------------------------------------------------------
+  # 2. CAPA CENTRAL DEL MODELO CLÍNICO (HAPI FHIR Server)
+  # -----------------------------------------------------------
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    container_name: rednorte-hapi-fhir
+    restart: on-failure
+    ports:
+      - "8085:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - HAPI_FHIR_TESTER_HOME_SERVER_ADDRESS=http://localhost:8080/fhir
+    depends_on:
+      - postgres
+    networks:
+      - rednorte-network
+
+  # -----------------------------------------------------------
+  # 2.5. SERVICIO DE DESCUBRIMIENTO (Eureka Server)
+  # -----------------------------------------------------------
+  ms-service-discovery:
+    build: ../SPS-ms-service-discovery
+    image: dieaz/ms-service-discovery:latest
+    container_name: ms-service-discovery
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    networks:
+      - rednorte-network
+
+  # -----------------------------------------------------------
+  # 3. TUS MICROSERVICIOS DE NEGOCIO (Ej: MS-Agenda) SOLO DE EJEMPLO SE DEBEN CAMBIAR LOS NOMBRES SEGUN SE AGREGEN MICROSERVICIOS
+  # -----------------------------------------------------------
+  ms-red-centros:
+    build: ../SPS-ms-red-centros
+    image: dieaz/ms-red-centros:latest
+    container_name: rednorte-ms-centros
+    ports:
+      - "8081:8080"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - hapi-fhir
+    networks:
+      - rednorte-network
+  ms-agenda:
+    build: ../SPS-ms-agenda-profesional
+    image: dieaz/ms-agenda-profesional:latest
+    container_name: ms-agenda-profesional
+    ports:
+      - "8082:8080"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - hapi-fhir
+    networks:
+      - rednorte-network
+  ms-ficha-clinica:
+    build: ../SPS-ms-ficha-clinica
+    image: dieaz/ms-ficha-clinica:latest
+    container_name: ms-ficha-clinica
+    ports:
+      - "8083:8001"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      # --- VARIABLES AGREGADAS PARA CONECTAR A POSTGRES ---
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - hapi-fhir
+      - postgres
+    networks:
+      - rednorte-network
+
+  ms-login-user:
+    restart: always
+    build: ../SPS-ms-login-user/ms-login-user
+    image: dieaz/ms-login-user:latest
+    container_name: ms-login-user
+    ports:
+      - "8087:8087"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+    depends_on:
+      - hapi-fhir
+    networks:
+      - rednorte-network
+
+  ms-usuarios:
+    restart: always
+    build: ../SPS-ms-usuarios/ms-usuarios
+    image: dieaz/ms-usuarios:latest
+    container_name: ms-usuarios
+    ports:
+      - "8086:8086"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - APP_JWT_JWK_SET_URI=http://ms-login-user:8080/.well-known/jwks.json
+    depends_on:
+      - hapi-fhir
+      - postgres
+    networks:
+      - rednorte-network
+
+
+  ms-urgencias-flujo:
+    restart: always
+    build: ../ms-urgencias-flujo
+    image: dieaz/ms-urgencias-flujo:latest
+    container_name: ms-urgencias-flujo
+    ports:
+      - "8084:8080"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - hapi-fhir
+    networks:
+      - rednorte-network
+
+  ms-reservas-citas:
+    restart: always
+    build: ../SPS-ms-reservas-citas
+    image: dieaz/ms-reservas-citas:latest
+    container_name: ms-reservas-citas
+    ports:
+      - "8089:8010"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - hapi-fhir
+      - postgres
+    networks:
+      - rednorte-network
+
+  ms-notificaciones:
+    restart: always
+    build: ../SPS-ms-notificaciones
+    image: dieaz/ms-notificaciones:latest
+    container_name: ms-notificaciones
+    ports:
+      - "8090:8011"
+    environment:
+      - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - hapi-fhir
+      - postgres
+    networks:
+      - rednorte-network
+
+  ms-api-gateway:
+    restart: always
+    build: ../SPS-rednorte-api-gateway
+    image: dieaz/ms-api-gateway:latest
+    container_name: ms-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+    depends_on:
+      - hapi-fhir
+      - ms-agenda
+      - ms-ficha-clinica
+      - ms-red-centros
+      - ms-urgencias-flujo
+      - ms-service-discovery
+      - ms-reservas-citas
+      - ms-notificaciones
+    networks:
+      - rednorte-network
+  ms-rednorte-front:
+    restart: always
+    build: ../SPS-rednorte-frontend
+    image: dieaz/ms-rednorte-front:latest
+    container_name: ms-rednorte-front
+    ports:
+      - "3000:80"
+    depends_on:
+      - ms-api-gateway
+    networks:
+      - rednorte-network
+
+# -----------------------------------------------------------
+# VOLÚMENES Y REDES
+# -----------------------------------------------------------
+volumes:
+  postgres_data:
+    # Hace que los datos sobrevivan aunque apagues el contenedor
+
+networks:
+  rednorte-network:
+    driver: bridge

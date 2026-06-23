@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RedNorte — Swagger Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #21262d;
+      --accent:    #238636;
+      --accent-h:  #2ea043;
+      --blue:      #1f6feb;
+      --blue-h:    #388bfd;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --tag-bg:    #1c2128;
+      --danger:    #da3633;
+      --warning:   #d29922;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* ── HEADER ── */
+    header {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, #238636, #1f6feb);
+      border-radius: 12px;
+      display: grid; place-items: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header p  { color: var(--muted); font-size: .875rem; margin-top: .15rem; }
+
+    /* ── AUTH PANEL ── */
+    .auth-panel {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .auth-panel-header {
+      padding: 1rem 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      gap: 1rem;
+    }
+    .auth-panel-header:hover { background: rgba(255,255,255,.03); }
+
+    .auth-title {
+      display: flex; align-items: center; gap: .6rem;
+      font-size: .9rem; font-weight: 600;
+    }
+
+    .token-badge {
+      display: none;
+      align-items: center;
+      gap: .4rem;
+      background: rgba(35,134,54,.15);
+      border: 1px solid rgba(35,134,54,.3);
+      color: #3fb950;
+      font-size: .75rem;
+      padding: .2rem .7rem;
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .token-badge.visible { display: flex; }
+    .token-badge .dot { width:7px;height:7px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite; }
+
+    .chevron { transition: transform .25s; color: var(--muted); font-size: .8rem; }
+    .chevron.open { transform: rotate(180deg); }
+
+    .auth-body {
+      padding: 1.25rem 1.4rem;
+      display: none;
+    }
+    .auth-body.open { display: block; }
+
+    /* login form */
+    .login-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap: .75rem;
+      align-items: end;
+    }
+    @media(max-width:640px) {
+      .login-form { grid-template-columns: 1fr; }
+    }
+
+    .field label {
+      display: block;
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: .35rem;
+      font-weight: 500;
+    }
+    .field input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: .875rem;
+      padding: .55rem .8rem;
+      border-radius: 7px;
+      outline: none;
+      font-family: 'JetBrains Mono', monospace;
+      transition: border-color .18s;
+    }
+    .field input:focus { border-color: var(--blue); }
+
+    .btn-login {
+      padding: .55rem 1.25rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: .875rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .18s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-login:hover { background: var(--accent-h); }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-clear {
+      padding: .55rem 1rem;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: .875rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .18s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* token display */
+    .token-area {
+      margin-top: 1rem;
+      display: none;
+    }
+    .token-area.visible { display: block; }
+
+    .token-label {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: .4rem;
+      font-weight: 500;
+    }
+    .token-box {
+      display: flex;
+      gap: .5rem;
+      align-items: stretch;
+    }
+    .token-value {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid rgba(35,134,54,.3);
+      color: #3fb950;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      padding: .6rem .9rem;
+      border-radius: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: text;
+    }
+    .btn-copy {
+      padding: .5rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: .8rem;
+      transition: all .18s;
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-copy:hover { background: rgba(255,255,255,.08); border-color: #555; }
+    .btn-copy.copied { background: rgba(35,134,54,.2); border-color: var(--accent); color: #3fb950; }
+
+    .auth-hint {
+      margin-top: .75rem;
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .auth-hint code {
+      background: var(--surface2);
+      padding: .1rem .35rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      color: #79c0ff;
+    }
+
+    .auth-error {
+      margin-top: .75rem;
+      padding: .6rem .9rem;
+      background: rgba(218,54,51,.1);
+      border: 1px solid rgba(218,54,51,.3);
+      color: #ff7b72;
+      border-radius: 7px;
+      font-size: .82rem;
+      display: none;
+    }
+    .auth-error.visible { display: block; }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; animation: pulse 2s infinite; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* ── GRID ── */
+    .grid {
+      max-width: 960px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(35,134,54,.06), transparent 60%);
+      pointer-events: none;
+    }
+    .card:hover {
+      border-color: #30363d;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .card.secured::before { background: linear-gradient(135deg, rgba(31,111,235,.08), transparent 60%); }
+    .card.secured .lock-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .7rem;
+      color: var(--blue-h);
+      background: rgba(31,111,235,.12);
+      border: 1px solid rgba(31,111,235,.2);
+      padding: .15rem .5rem;
+      border-radius: 20px;
+    }
+
+    .card-header { display: flex; align-items: flex-start; gap: .75rem; }
+    .icon {
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      display: grid; place-items: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .card-meta h2 { font-size: .95rem; font-weight: 600; line-height: 1.3; }
+    .card-meta .port { font-size: .78rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .72rem;
+      padding: .15rem .55rem;
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .actions { display: flex; gap: .5rem; margin-top: auto; }
+    .btn {
+      flex: 1;
+      padding: .5rem .75rem;
+      border-radius: 7px;
+      font-size: .8rem;
+      font-weight: 500;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .18s, border-color .18s, color .18s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: rgba(240,246,252,.1);
+    }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.05); border-color: #555; }
+    .btn-open-swagger {
+      background: var(--blue);
+      color: #fff;
+      border-color: rgba(240,246,252,.1);
+    }
+    .btn-open-swagger:hover { background: var(--blue-h); }
+
+    .section-label {
+      max-width: 960px;
+      margin: 2rem auto .75rem;
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header>
+  <div class="logo">🏥</div>
+  <div>
+    <h1>RedNorte — Swagger Hub</h1>
+    <p>Panel de acceso rápido a las APIs de los microservicios</p>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ AUTH PANEL ═══════════════════════════ -->
+<div class="auth-panel">
+  <div class="auth-panel-header" onclick="toggleAuth()">
+    <div class="auth-title">
+      🔐 &nbsp;Autenticación JWT
+      <span class="token-badge" id="tokenBadge">
+        <span class="dot"></span>
+        Token activo
+      </span>
+    </div>
+    <span class="chevron" id="chevron">▼</span>
+  </div>
+
+  <div class="auth-body open" id="authBody">
+    <div class="login-form">
+      <div class="field">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" placeholder="admin" autocomplete="username"/>
+      </div>
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn-login" id="loginBtn" onclick="doLogin()">Obtener Token</button>
+      <button class="btn-clear" onclick="clearToken()">Limpiar</button>
+    </div>
+
+    <div class="auth-error" id="authError"></div>
+
+    <div class="token-area" id="tokenArea">
+      <div class="token-label">Access Token (Bearer)</div>
+      <div class="token-box">
+        <div class="token-value" id="tokenValue" title="Token JWT"></div>
+        <button class="btn-copy" id="copyBtn" onclick="copyToken()">📋 Copiar</button>
+      </div>
+      <div class="auth-hint">
+        En cualquier Swagger UI, haz clic en <code>Authorize 🔓</code> → pega el token en el campo
+        <code>Value</code> con el prefijo <code>Bearer &lt;token&gt;</code> → <code>Authorize</code>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ STATUS BAR ═══════════════════════════ -->
+<div class="status-bar">
+  <span class="dot"></span>
+  Servicios en <strong style="color:var(--text)">localhost</strong> &nbsp;·&nbsp; Los servicios con 🔒 requieren token JWT del panel de arriba
+</div>
+
+<!-- INFRAESTRUCTURA -->
+<p class="section-label">⚙️ Infraestructura</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a4a">🔍</div>
+      <div class="card-meta">
+        <h2>Service Discovery</h2>
+        <div class="port">Eureka Server · :8761</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">eureka</span><span class="tag">registry</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8761" target="_blank">Eureka UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8761/swagger-ui/index.html" target="_blank">Swagger</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a1a">🌐</div>
+      <div class="card-meta">
+        <h2>API Gateway</h2>
+        <div class="port">Gateway principal · :8080</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">gateway</span><span class="tag">routing</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8080/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8080/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#2a1a1a">🔥</div>
+      <div class="card-meta">
+        <h2>HAPI FHIR Server</h2>
+        <div class="port">Servidor FHIR · :8085</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">fhir</span><span class="tag">hl7</span><span class="tag">clinical</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8085/fhir" target="_blank">FHIR UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8085/fhir/metadata" target="_blank">Capability</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- MICROSERVICIOS -->
+<p class="section-label">🧩 Microservicios de negocio</p>
+<div class="grid">
+
+  <div class="card secured">
+    <div class="card-header">
+      <div class="icon" style="background:#2a1a1a">🔐</div>
+      <div class="card-meta">
+        <h2>Login / Auth &nbsp;<span class="lock-icon">🔒 JWT</span></h2>
+        <div class="port">ms-login-user · :8087</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">login</span><span class="tag">jwt</span><span class="tag">auth</span><span class="tag">mfa</span></div>
+    <div class="actions">
+      <a class="btn btn-open-swagger" href="http://localhost:8087/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8087/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card secured">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a1a">👥</div>
+      <div class="card-meta">
+        <h2>Usuarios &nbsp;<span class="lock-icon">🔒 JWT</span></h2>
+        <div class="port">ms-usuarios · :8086</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">usuarios</span><span class="tag">roles</span></div>
+    <div class="actions">
+      <a class="btn btn-open-swagger" href="http://localhost:8086/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8086/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card secured">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a2a">🧑‍⚕️</div>
+      <div class="card-meta">
+        <h2>Pacientes &nbsp;<span class="lock-icon">🔒 JWT</span></h2>
+        <div class="port">ms-paciente · :8088</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">pacientes</span><span class="tag">fhir</span></div>
+    <div class="actions">
+      <a class="btn btn-open-swagger" href="http://localhost:8088/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8088/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a2a">🏢</div>
+      <div class="card-meta">
+        <h2>Red de Centros</h2>
+        <div class="port">ms-red-centros · :8081</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">centros</span><span class="tag">fhir</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8081/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8081/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#2a2a1a">📅</div>
+      <div class="card-meta">
+        <h2>Agenda Profesional</h2>
+        <div class="port">ms-agenda · :8082</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">agenda</span><span class="tag">profesional</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8082/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8082/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#1a1a2a">📋</div>
+      <div class="card-meta">
+        <h2>Ficha Clínica</h2>
+        <div class="port">ms-ficha-clinica · :8083</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">ficha</span><span class="tag">clinica</span><span class="tag">postgres</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8083/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8083/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#2a1a2a">🚨</div>
+      <div class="card-meta">
+        <h2>Urgencias Flujo</h2>
+        <div class="port">ms-urgencias-flujo · :8084</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">urgencias</span><span class="tag">flujo</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:8084/swagger-ui/index.html" target="_blank">Swagger UI</a>
+      <a class="btn btn-secondary" href="http://localhost:8084/v3/api-docs" target="_blank">API Docs</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- FRONTEND -->
+<p class="section-label">🖥️ Frontend</p>
+<div class="grid">
+  <div class="card">
+    <div class="card-header">
+      <div class="icon" style="background:#1a2a3a">💻</div>
+      <div class="card-meta">
+        <h2>Frontend RedNorte</h2>
+        <div class="port">React/Next · :3000</div>
+      </div>
+    </div>
+    <div class="tags"><span class="tag">frontend</span><span class="tag">nginx</span></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="http://localhost:3000" target="_blank">Abrir App</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
+<script>
+  const LOGIN_URL = 'http://localhost:8087/auth/login';
+  let currentToken = null;
+
+  function toggleAuth() {
+    const body    = document.getElementById('authBody');
+    const chevron = document.getElementById('chevron');
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('loginBtn');
+    const errEl    = document.getElementById('authError');
+
+    if (!username || !password) {
+      showError('Por favor ingresa usuario y contraseña.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Autenticando…';
+    errEl.classList.remove('visible');
+
+    try {
+      const res = await fetch(LOGIN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `Error ${res.status}`);
+      }
+
+      const data = await res.json();
+      // Soporta tanto { accessToken } como { token } como { tokens: { accessToken } }
+      const token = data.accessToken ?? data.token ?? data.tokens?.accessToken ?? null;
+
+      if (!token) throw new Error('No se encontró el access token en la respuesta.');
+
+      setToken(token);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Obtener Token';
+    }
+  }
+
+  function setToken(token) {
+    currentToken = token;
+    document.getElementById('tokenValue').textContent = token;
+    document.getElementById('tokenArea').classList.add('visible');
+    document.getElementById('tokenBadge').classList.add('visible');
+    document.getElementById('authError').classList.remove('visible');
+    // guardar en sessionStorage para no perderlo al recargar
+    sessionStorage.setItem('rednorte_jwt', token);
+  }
+
+  function clearToken() {
+    currentToken = null;
+    sessionStorage.removeItem('rednorte_jwt');
+    document.getElementById('tokenValue').textContent = '';
+    document.getElementById('tokenArea').classList.remove('visible');
+    document.getElementById('tokenBadge').classList.remove('visible');
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+  }
+
+  async function copyToken() {
+    if (!currentToken) return;
+    const bearerToken = 'Bearer ' + currentToken;
+    await navigator.clipboard.writeText(bearerToken);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar';
+      btn.classList.remove('copied');
+    }, 2000);
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('authError');
+    el.textContent = '⚠️ ' + msg;
+    el.classList.add('visible');
+  }
+
+  // Restaurar token de sesión anterior
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = sessionStorage.getItem('rednorte_jwt');
+    if (saved) setToken(saved);
+
+    // Login con Enter
+    document.getElementById('password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('username').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+  });
+</script>
+</body>
+</html>

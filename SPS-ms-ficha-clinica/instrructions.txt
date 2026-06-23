@@ -1,0 +1,69 @@
+# Instrucciones de Gestión y Uso - MS-FICHA-CLINICA
+
+Este documento proporciona una guía rápida sobre el despliegue con Docker, la gestión de la base de datos PostgreSQL en Neon y cómo interactuar con la API.
+
+## 1. Despliegue con Docker
+
+El microservicio está configurado para ejecutarse de forma aislada mediante Docker Compose.
+
+### Comandos de Gestión
+*   **Iniciar todo**: `docker compose up --build -d`
+*   **Ver estado**: `docker compose ps`
+*   **Ver logs**: `docker compose logs -f app`
+*   **Detener**: `docker compose stop`
+*   **Eliminar contenedores**: `docker compose down`
+
+---
+
+## 2. Gestión de Base de Datos (PostgreSQL - Neon)
+
+El microservicio utiliza una base de datos externa alojada en Neon.
+
+### Datos de Conexión
+*   **Host**: `ep-sweet-paper-ap7u0t4b-pooler.c-7.us-east-1.aws.neon.tech`
+*   **Base de Datos**: `neondb`
+*   **Usuario**: `neondb_owner`
+*   **Password**: `npg_ZFQao74MzXDC`
+*   **Puerto**: `5432` (Estándar de PostgreSQL)
+*   **SSL**: Requerido
+
+### Cómo Revisar la Base de Datos
+1.  **DBeaver / pgAdmin**: Utiliza los datos arriba indicados para crear una nueva conexión PostgreSQL. Asegúrate de habilitar SSL (mode: require).
+2.  **Consola de Neon**: Accede directamente al panel de Neon si tienes los accesos.
+3.  **Docker Logs**: Puedes verificar que la aplicación se conectó correctamente revisando los logs al arrancar (`docker compose logs app`).
+
+---
+
+## 3. Guía de Interacción (CRUD Básico)
+
+La API sigue los principios REST. A continuación, un ejemplo de flujo básico para **Observaciones**.
+
+### Crear Observación (POST)
+```bash
+curl -X POST http://localhost:8001/api/v1/observations \
+     -H "Content-Type: application/json" \
+     -d '{
+       "patientId": "P001",
+       "encounterId": "E001",
+       "code": "8480-6",
+       "value": 120.0,
+       "unit": "mmHg"
+     }'
+```
+
+### Consultar Observación (GET)
+*   Ver todas: `GET http://localhost:8001/api/v1/observations`
+*   Ver por ID: `GET http://localhost:8001/api/v1/observations/{id}`
+
+### Actualizar/Eliminar
+Para más detalles sobre otros módulos (Historia Clínica, Notas, Condiciones, Procedimientos, Encuentros), consulta la carpeta `/docs`.
+
+---
+
+## 4. Estructura de Documentación
+*   `docs/clinical-history-endpoints.md`: Historia consolidada.
+*   `docs/clinical-note-endpoints.md`: Notas de evolución.
+*   `docs/condition-endpoints.md`: Diagnósticos.
+*   `docs/encounter-endpoints.md`: Atenciones.
+*   `docs/observation-endpoints.md`: Signos vitales.
+*   `docs/procedure-endpoints.md`: Intervenciones.

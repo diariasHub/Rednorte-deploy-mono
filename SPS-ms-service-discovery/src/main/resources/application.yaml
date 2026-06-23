@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: ms-service-discovery
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+server:
+  port: 8761
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:${server.port}/eureka/}

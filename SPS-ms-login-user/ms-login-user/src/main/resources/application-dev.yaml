@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ms_usuarios}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:5173
+  security:
+    jwt:
+      # En dev firmamos con un par RSA generado en memoria al arranque.
+      # En prod este bloque se reemplaza por el issuer-uri/jwk-set-uri del IdP.
+      dev-keypair-enabled: true
+    patient-otp:
+      # En dev exponemos el OTP en la respuesta para que el smoke E2E pueda
+      # continuar sin un proveedor real de SMS/email. NO usar en prod.
+      expose-in-response: true
+
+logging:
+  level:
+    "[cl.rednorte.ms_usuarios]": DEBUG

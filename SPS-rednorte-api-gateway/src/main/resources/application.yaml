@@ -1,0 +1,35 @@
+server:
+  port: 8080 
+
+spring:
+  application:
+    name: ms-rednorte-api-gateway
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://ms-service-discovery:8761/eureka/}
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: "MS Pacientes"
+        url: /api-docs/pacientes
+      - name: "MS Login User"
+        url: /api-docs/login-user
+      - name: "MS Ficha Clinica"
+        url: /api-docs/ficha-clinica
+      - name: "MS Red Centros"
+        url: /api-docs/red-centros
+      - name: "MS Urgencias Flujo"
+        url: /api-docs/urgencias-flujo
+      - name: "MS Usuarios"
+        url: /api-docs/usuarios
+      - name: "MS Agenda"
+        url: /api-docs/agenda
