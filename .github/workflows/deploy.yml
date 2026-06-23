@@ -106,16 +106,16 @@ jobs:
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
+        username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           # Si la carpeta no existe, clonamos el repo
-          if [ ! -d "/home/ubuntu/rednorte-monorepo" ]; then
-            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git /home/ubuntu/rednorte-monorepo
+          if [ ! -d "/home/ec2-user/rednorte-monorepo" ]; then
+            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git /home/ec2-user/rednorte-monorepo
           fi
           
           # Entramos a la carpeta y actualizamos el código
-          cd /home/ubuntu/rednorte-monorepo
+          cd /home/ec2-user/rednorte-monorepo
           git pull origin main
           
           # Vamos a infraestructura y levantamos contenedores
