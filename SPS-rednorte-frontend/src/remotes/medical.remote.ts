@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Doctor } from '../app/types/Booking';
 
 // APUNTAMOS DIRECTO A LA PUERTA TRASERA (HAPI FHIR)
-const FHIR_BASE_URL = 'http://localhost:8085/fhir'; 
+const FHIR_BASE_URL = '/fhir'; 
 
 export interface SpecialtyDTO {
   id: string;

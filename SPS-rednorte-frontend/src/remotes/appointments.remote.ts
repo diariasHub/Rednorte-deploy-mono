@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { AppointmentDTO, CreateAppointmentDTO } from './dtos/appointment.dto';
 
-const FHIR_BASE_URL = 'http://localhost:8085/fhir';
+const FHIR_BASE_URL = '/fhir';
 
 export const appointmentsRemote = {
   // Las demás funciones se pueden dejar con axios apuntando al 8085

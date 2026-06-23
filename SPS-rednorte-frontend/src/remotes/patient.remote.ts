@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const FHIR_BASE_URL = 'http://localhost:8085/fhir';
+const FHIR_BASE_URL = '/fhir';
 
 export const patientRemote = {
   // 1. 🛡️ BYPASS PARA LAS PREVISIONES

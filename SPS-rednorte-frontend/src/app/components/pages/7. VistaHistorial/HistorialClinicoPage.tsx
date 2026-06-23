@@ -32,7 +32,7 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
     try {
       // Buscamos al paciente en FHIR por su RUT (identifier)
       // Ajusta el puerto (8085) o la ruta si pasas esto por tu API Gateway
-      const response = await fetch(`http://localhost:8085/fhir/Patient?identifier=${rutBusqueda}`, {
+      const response = await fetch(`/fhir/Patient?identifier=${rutBusqueda}`, {
         headers: { 'Accept': 'application/fhir+json' }
       });
 

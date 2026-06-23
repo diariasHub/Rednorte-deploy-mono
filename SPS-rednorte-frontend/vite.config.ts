@@ -63,6 +63,11 @@ export default defineConfig({
         changeOrigin: true,
         // Tampoco usamos rewrite porque tu Gateway ya espera la ruta con /agendas/...
       },
+      // 👇 NUEVA REGLA PARA FHIR 👇
+      '/fhir': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
+      },
     },
   },
 });
