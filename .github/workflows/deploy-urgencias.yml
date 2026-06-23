@@ -23,8 +23,8 @@ jobs:
       - name: Build and Push Docker image
         run: |
           cd SPS-RedNorte-Infraestructura
-          docker-compose build ms-urgencias-flujo
-          docker-compose push ms-urgencias-flujo
+          docker compose build ms-urgencias-flujo
+          docker compose push ms-urgencias-flujo
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -38,3 +38,4 @@ jobs:
             cd SPS-RedNorte-Infraestructura
             sudo docker compose pull ms-urgencias-flujo
             sudo docker compose up -d ms-urgencias-flujo
+

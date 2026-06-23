@@ -23,8 +23,8 @@ jobs:
       - name: Build and Push Docker image
         run: |
           cd SPS-RedNorte-Infraestructura
-          docker-compose build ms-usuarios
-          docker-compose push ms-usuarios
+          docker compose build ms-usuarios
+          docker compose push ms-usuarios
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -38,3 +38,4 @@ jobs:
             cd SPS-RedNorte-Infraestructura
             sudo docker compose pull ms-usuarios
             sudo docker compose up -d ms-usuarios
+

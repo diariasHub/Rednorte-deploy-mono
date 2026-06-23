@@ -23,3 +23,4 @@ jobs:
             cd SPS-RedNorte-Infraestructura
             sudo docker compose pull postgres hapi-fhir
             sudo docker compose up -d postgres hapi-fhir
+
