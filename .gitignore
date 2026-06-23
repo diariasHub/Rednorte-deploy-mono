@@ -3,7 +3,7 @@
 claveRednorte.pem
 
 # Archivos de Git y GitHub
-.github/
+
 .gitignore
 .git/
 
