@@ -37,5 +37,6 @@ jobs:
             git pull origin main
             cd SPS-RedNorte-Infraestructura
             sudo docker compose pull ms-rednorte-front
-            sudo docker compose up -d ms-rednorte-front
+            sudo docker compose up -d --no-deps ms-rednorte-front
+
 

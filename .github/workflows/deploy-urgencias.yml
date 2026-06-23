@@ -37,5 +37,6 @@ jobs:
             git pull origin main
             cd SPS-RedNorte-Infraestructura
             sudo docker compose pull ms-urgencias-flujo
-            sudo docker compose up -d ms-urgencias-flujo
+            sudo docker compose up -d --no-deps ms-urgencias-flujo
+
 
