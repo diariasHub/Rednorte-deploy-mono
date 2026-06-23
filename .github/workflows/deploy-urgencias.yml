@@ -1,0 +1,40 @@
+﻿name: Deploy Urgencias
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'ms-urgencias-flujo/**'
+      - '.github/workflows/deploy-urgencias.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        run: |
+          cd SPS-RedNorte-Infraestructura
+          docker-compose build ms-urgencias-flujo
+          docker-compose push ms-urgencias-flujo
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/rednorte-monorepo
+            git pull origin main
+            cd SPS-RedNorte-Infraestructura
+            sudo docker compose pull ms-urgencias-flujo
+            sudo docker compose up -d ms-urgencias-flujo

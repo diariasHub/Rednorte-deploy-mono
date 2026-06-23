@@ -1,0 +1,25 @@
+﻿name: Deploy Infra
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'SPS-RedNorte-Infraestructura/docker-compose.yml'
+      - '.github/workflows/deploy-infra.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Infra to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/rednorte-monorepo
+            git pull origin main
+            cd SPS-RedNorte-Infraestructura
+            sudo docker compose pull postgres hapi-fhir
+            sudo docker compose up -d postgres hapi-fhir
