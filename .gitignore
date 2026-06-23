@@ -1,0 +1,37 @@
+.env
+*.pem
+claveRednorte.pem
+
+# Archivos de Git y GitHub
+.github/
+.gitignore
+.git/
+
+# Logs y directorios temporales
+logs/
+logs/
+*.log
+
+# Directorios de Build/Binarios
+**/target/
+**/bin/
+**/obj/
+
+# Dependencias
+**/node_modules/
+**/dist/
+
+# Archivos de IDE/Editor
+.idea/
+*.swp
+*.swo
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de configuración
+*.config
+*.ini
+
+# Archivos de Markdown específicos del entregable
+"Informe-entrega-3.docx (3).md"
