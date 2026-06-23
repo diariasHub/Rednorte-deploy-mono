@@ -108,10 +108,25 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
   };
 
   // Helper para mostrar paciente en FHIR bundle de Appointment
-  const getPatientName = (participants: any[]) => {
+  const getPatientName = (appointment: any) => {
+    const participants = appointment.participant;
     if (!participants) return 'Desconocido';
-    const p = participants.find(part => part.actor?.reference?.startsWith('Patient/'));
-    return p ? p.actor.display || 'Paciente Registrado' : 'Desconocido';
+    const p = participants.find((part: any) => part.actor?.reference?.startsWith('Patient/'));
+    if (!p) return 'Desconocido';
+    
+    if (p.actor.display) return p.actor.display;
+
+    const patientId = p.actor.reference.replace('Patient/', '');
+    const patientResource = allAppointments.find((res: any) => res.resourceType === 'Patient' && res.id === patientId);
+    
+    if (patientResource && patientResource.name && patientResource.name[0]) {
+      const name = patientResource.name[0];
+      const given = name.given ? name.given.join(' ') : '';
+      const family = name.family || '';
+      return `${given} ${family}`.trim() || 'Paciente Registrado';
+    }
+
+    return 'Paciente Registrado';
   };
 
   return (
@@ -318,8 +333,9 @@ export function DashboardAdmin({ onReserva }: DashboardAdminProps) {
                             <User className="h-4 w-4 text-slate-500" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-slate-800">{getPatientName(c.participant)}</p>
+                            <p className="text-sm font-bold text-slate-800">{getPatientName(c)}</p>
                             <p className="text-[11px] text-slate-500">ID FHIR: {c.id}</p>
+                            {c.description && <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] truncate" title={c.description}>{c.description}</p>}
                           </div>
                         </div>
                       </td>

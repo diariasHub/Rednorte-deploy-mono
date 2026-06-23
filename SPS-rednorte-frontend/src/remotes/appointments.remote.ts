@@ -5,8 +5,8 @@ const FHIR_BASE_URL = '/fhir';
 
 export const appointmentsRemote = {
   // Las demás funciones se pueden dejar con axios apuntando al 8085
-  getAll(): Promise<AppointmentDTO[]> {
-    return axios.get(`${FHIR_BASE_URL}/Appointment`).then(r => r.data);
+  getAll(): Promise<any> {
+    return axios.get(`${FHIR_BASE_URL}/Appointment?_include=Appointment:patient`).then(r => r.data);
   },
 
   getTotalCount: async (): Promise<number> => {
