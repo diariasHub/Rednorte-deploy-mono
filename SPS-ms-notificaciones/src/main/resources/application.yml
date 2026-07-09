@@ -24,3 +24,15 @@ eureka:
   instance:
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
     prefer-ip-address: true
+
+aws:
+  sqs:
+    queue:
+      url: ${AWS_SQS_QUEUE_URL:https://sqs.us-east-1.amazonaws.com/385454776682/rednorte-notificaciones-queue}
+
+spring.cloud.aws:
+  region:
+    static: us-east-1
+  credentials:
+    access-key: ${AWS_ACCESS_KEY_ID:YOUR_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:YOUR_SECRET_KEY}
