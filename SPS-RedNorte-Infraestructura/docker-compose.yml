@@ -4,7 +4,7 @@ services:
   # -----------------------------------------------------------
   postgres:
     image: postgres:15-alpine
-    container_name: rednorte-postgres
+
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -25,7 +25,7 @@ services:
   # -----------------------------------------------------------
   hapi-fhir:
     image: hapiproject/hapi:latest
-    container_name: rednorte-hapi-fhir
+
     restart: on-failure
     ports:
       - "8085:8080"
@@ -49,7 +49,7 @@ services:
   ms-service-discovery:
     build: ../SPS-ms-service-discovery
     image: dieaz/ms-service-discovery:latest
-    container_name: ms-service-discovery
+
     ports:
       - "8761:8761"
     environment:
@@ -65,7 +65,7 @@ services:
   ms-red-centros:
     build: ../SPS-ms-red-centros
     image: dieaz/ms-red-centros:latest
-    container_name: rednorte-ms-centros
+
     ports:
       - "8081:8080"
     environment:
@@ -80,7 +80,7 @@ services:
   ms-agenda:
     build: ../SPS-ms-agenda-profesional
     image: dieaz/ms-agenda-profesional:latest
-    container_name: ms-agenda-profesional
+
     ports:
       - "8082:8080"
     environment:
@@ -95,7 +95,7 @@ services:
   ms-ficha-clinica:
     build: ../SPS-ms-ficha-clinica
     image: dieaz/ms-ficha-clinica:latest
-    container_name: ms-ficha-clinica
+
     ports:
       - "8083:8001"
     environment:
@@ -120,7 +120,7 @@ services:
     restart: always
     build: ../SPS-ms-login-user/ms-login-user
     image: dieaz/ms-login-user:latest
-    container_name: ms-login-user
+
     ports:
       - "8087:8087"
     environment:
@@ -136,7 +136,7 @@ services:
     restart: always
     build: ../SPS-ms-usuarios/ms-usuarios
     image: dieaz/ms-usuarios:latest
-    container_name: ms-usuarios
+
     ports:
       - "8086:8086"
     environment:
@@ -160,7 +160,7 @@ services:
     restart: always
     build: ../ms-urgencias-flujo
     image: dieaz/ms-urgencias-flujo:latest
-    container_name: ms-urgencias-flujo
+
     ports:
       - "8084:8080"
     environment:
@@ -177,7 +177,7 @@ services:
     restart: always
     build: ../SPS-ms-reservas-citas
     image: dieaz/ms-reservas-citas:latest
-    container_name: ms-reservas-citas
+
     ports:
       - "8089:8010"
     environment:
@@ -198,7 +198,7 @@ services:
     restart: always
     build: ../SPS-ms-notificaciones
     image: dieaz/ms-notificaciones:latest
-    container_name: ms-notificaciones
+
     ports:
       - "8090:8011"
     environment:
@@ -219,7 +219,7 @@ services:
     restart: always
     build: ../SPS-rednorte-api-gateway
     image: dieaz/ms-api-gateway:latest
-    container_name: ms-api-gateway
+
     ports:
       - "8080:8080"
     environment:
@@ -241,7 +241,7 @@ services:
     restart: always
     build: ../SPS-rednorte-frontend
     image: dieaz/ms-rednorte-front:latest
-    container_name: ms-rednorte-front
+
     ports:
       - "3000:80"
     depends_on:
