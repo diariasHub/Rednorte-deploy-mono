@@ -261,3 +261,4 @@ volumes:
 networks:
   rednorte-network:
     driver: overlay
+    attachable: true
