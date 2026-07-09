@@ -17,6 +17,8 @@ services:
       - ./postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - rednorte-network
+    deploy:
+      replicas: 1
 
   # -----------------------------------------------------------
   # 2. CAPA CENTRAL DEL MODELO CLÍNICO (HAPI FHIR Server)
@@ -38,6 +40,8 @@ services:
       - postgres
     networks:
       - rednorte-network
+    deploy:
+      replicas: 1
 
   # -----------------------------------------------------------
   # 2.5. SERVICIO DE DESCUBRIMIENTO (Eureka Server)
@@ -52,6 +56,8 @@ services:
       - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
     networks:
       - rednorte-network
+    deploy:
+      replicas: 1
 
   # -----------------------------------------------------------
   # 3. TUS MICROSERVICIOS DE NEGOCIO (Ej: MS-Agenda) SOLO DE EJEMPLO SE DEBEN CAMBIAR LOS NOMBRES SEGUN SE AGREGEN MICROSERVICIOS
@@ -69,6 +75,8 @@ services:
       - hapi-fhir
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
   ms-agenda:
     build: ../SPS-ms-agenda-profesional
     image: dieaz/ms-agenda-profesional:latest
@@ -82,6 +90,8 @@ services:
       - hapi-fhir
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
   ms-ficha-clinica:
     build: ../SPS-ms-ficha-clinica
     image: dieaz/ms-ficha-clinica:latest
@@ -103,6 +113,8 @@ services:
       - postgres
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
   ms-login-user:
     restart: always
@@ -117,6 +129,8 @@ services:
       - hapi-fhir
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
   ms-usuarios:
     restart: always
@@ -138,6 +152,8 @@ services:
       - postgres
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
 
   ms-urgencias-flujo:
@@ -154,6 +170,8 @@ services:
       - hapi-fhir
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
   ms-reservas-citas:
     restart: always
@@ -173,6 +191,8 @@ services:
       - postgres
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
   ms-notificaciones:
     restart: always
@@ -192,6 +212,8 @@ services:
       - postgres
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
   ms-api-gateway:
     restart: always
@@ -213,6 +235,8 @@ services:
       - ms-notificaciones
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
   ms-rednorte-front:
     restart: always
     build: ../SPS-rednorte-frontend
@@ -224,6 +248,8 @@ services:
       - ms-api-gateway
     networks:
       - rednorte-network
+    deploy:
+      replicas: 2
 
 # -----------------------------------------------------------
 # VOLÚMENES Y REDES
@@ -234,4 +260,4 @@ volumes:
 
 networks:
   rednorte-network:
-    driver: bridge
+    driver: overlay
