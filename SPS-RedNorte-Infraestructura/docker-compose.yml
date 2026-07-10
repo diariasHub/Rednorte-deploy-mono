@@ -7,9 +7,9 @@ services:
 
     restart: always
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hapi_fhir
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -31,8 +31,8 @@ services:
       - "8085:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hapi_fhir
-      - SPRING_DATASOURCE_USERNAME=${DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - HAPI_FHIR_TESTER_HOME_SERVER_ADDRESS=http://localhost:8080/fhir
@@ -101,9 +101,9 @@ services:
     environment:
       - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
       # --- VARIABLES AGREGADAS PARA CONECTAR A POSTGRES ---
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATASOURCE_DRIVERCLASSNAME=org.postgresql.Driver
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
@@ -142,9 +142,9 @@ services:
     environment:
       - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
       - SPRING_PROFILES_ACTIVE=dev
-      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - APP_JWT_JWK_SET_URI=http://ms-login-user:8080/.well-known/jwks.json
     depends_on:
@@ -183,9 +183,9 @@ services:
     environment:
       - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
       - SPRING_PROFILES_ACTIVE=dev
-      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       - hapi-fhir
       - postgres
@@ -204,9 +204,9 @@ services:
     environment:
       - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
       - SPRING_PROFILES_ACTIVE=dev
-      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     depends_on:
       - hapi-fhir
       - postgres
