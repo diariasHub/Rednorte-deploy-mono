@@ -46,6 +46,11 @@ public class UrgenciaController {
         return ResponseEntity.ok(urgenciaService.obtenerPacientesDeAlta());
     }
 
+    @GetMapping("/rechazadas")
+    public ResponseEntity<java.util.List<Map<String, Object>>> obtenerRechazadas() {
+        return ResponseEntity.ok(urgenciaService.obtenerPacientesRechazados());
+    }
+
     @PutMapping("/triage/{id}")
     public ResponseEntity<String> realizarTriage(@PathVariable String id, @RequestBody Map<String, Object> datosTriage) {
         urgenciaService.procesarTriage(id, datosTriage);
@@ -53,9 +58,14 @@ public class UrgenciaController {
     }
 
     @GetMapping("/espera/{rut}")
-    public ResponseEntity<Map<String, Object>> consultarEspera(@PathVariable String rut) {
-        int minutos = urgenciaService.calcularTiempoEspera(rut);
-        return ResponseEntity.ok(Map.of("rut", rut, "tiempoEsperaMinutos", minutos));
+    public ResponseEntity<?> consultarEspera(@PathVariable String rut) {
+        try {
+            Map<String, Object> result = urgenciaService.calcularTiempoEspera(rut);
+            result.put("rut", rut); // Ensure rut is in response
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/rechazo")
@@ -82,7 +92,29 @@ public class UrgenciaController {
         if (payload.containsKey("hospitalizacion")) {
             hospitalizar = Boolean.parseBoolean(payload.get("hospitalizacion").toString());
         }
-        urgenciaService.finalizarAtencion(id, (String) payload.get("diagnostico"), hospitalizar);
-        return ResponseEntity.ok("Alta médica procesada correctamente.");
+        try {
+            urgenciaService.finalizarAtencion(id, (String) payload.get("diagnostico"), hospitalizar);
+            return ResponseEntity.ok("Alta médica procesada correctamente.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/tratamiento/{idEncuentro}")
+    public ResponseEntity<String> indicarTratamiento(@PathVariable String idEncuentro, @RequestBody Map<String, String> payload) {
+        urgenciaService.indicarTratamientoUrgencia(idEncuentro, payload.get("medicamento"), payload.get("indicaciones"));
+        return ResponseEntity.ok("Tratamiento indicado correctamente.");
+    }
+
+    @GetMapping("/tratamientos/pendientes")
+    public ResponseEntity<java.util.List<Map<String, Object>>> obtenerTratamientosPendientes() {
+        return ResponseEntity.ok(urgenciaService.obtenerTratamientosPendientes());
+    }
+
+    @PutMapping("/tratamiento/{idRequest}/resolver")
+    public ResponseEntity<String> resolverTratamiento(@PathVariable String idRequest, @RequestBody Map<String, String> payload) {
+        String estado = payload.get("estado");
+        urgenciaService.resolverTratamiento(idRequest, estado, payload);
+        return ResponseEntity.ok("Tratamiento resuelto como: " + estado);
     }
 }

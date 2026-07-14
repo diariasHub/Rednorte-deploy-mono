@@ -59,6 +59,20 @@ export function Reservahoraview({ onBack }: { onBack: () => void }) {
         }
 
         setBookingCode(created.id ?? `RN-${Math.floor(1000 + Math.random() * 9000)}`);
+        
+        // 3. 📩 ENVIAR NOTIFICACIÓN (Email/SMS)
+        if (data.email) {
+          try {
+            await import('axios').then(axios => axios.default.post('/proxy/notificaciones/api/v1/notificaciones/send', {
+              email: data.email,
+              paciente: data.firstName || 'Paciente',
+              idCita: created.id
+            }));
+          } catch (e) {
+            console.warn("No se pudo enviar la notificación de reserva", e);
+          }
+        }
+
         setCompleted(true);
       } catch (error) {
         console.error('Error creando reserva:', error);

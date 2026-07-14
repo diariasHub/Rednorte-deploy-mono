@@ -17,37 +17,40 @@ interface SidebarProps {
   userRole?: string | null;
 }
 
-// 1. Agregamos "allowedRoles" a cada opción
+// 1. Agregamos "allowedRoles" a cada opción y separamos por vista
 const navigationGroups = [
   {
-    title: 'Panel Clínico',
+    title: 'Vista Administrativo',
     items: [
-      { id: 'dashboard', label: 'Resumen Clínico', icon: LayoutDashboard, allowedRoles: ['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO', 'PACIENTE'] },
+      { id: 'dashboard', label: 'Resumen Clínico', icon: LayoutDashboard, allowedRoles: ['ADMIN', 'ADMINISTRATIVO'] },
+      { id: 'facilities', label: 'Establecimientos', icon: Hospital, allowedRoles: ['ADMIN', 'ADMINISTRATIVO'] },
     ],
   },
   {
-    title: 'Atención del Paciente',
+    title: 'Vista Enfermero',
     items: [
-      { id: 'appointments', label: 'Citas Médicas', icon: Calendar, allowedRoles: ['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO', 'PACIENTE'] },
-      { id: 'history', label: 'Historial Clínico', icon: FileText, allowedRoles: ['ADMIN', 'MEDICO', 'ENFERMERO', 'PACIENTE'] },
+      { id: 'triage', label: 'Triage', icon: Activity, allowedRoles: ['ADMIN', 'ENFERMERO'] },
+      { id: 'nurse-treatments', label: 'Lista de Tratamientos', icon: Clock, allowedRoles: ['ADMIN', 'ENFERMERO'] },
+      { id: 'history', label: 'Historial Clínico', icon: FileText, allowedRoles: ['ADMIN', 'ENFERMERO'] },
     ],
   },
   {
-    title: 'Gestión Crítica',
+    title: 'Vista Médico',
     items: [
-      { id: 'urgencias', label: 'Urgencias', icon: Activity, allowedRoles: ['ADMIN', 'ENFERMERO', 'MEDICO'] },
-      { id: 'waiting-list', label: 'Lista de Espera', icon: Clock, allowedRoles: ['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO'] },
-      { id: 'notifications', label: 'Alertas Clínicas', icon: Bell, allowedRoles: ['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO'] },
+      { id: 'urgencias', label: 'Atención Urgencia', icon: Activity, allowedRoles: ['ADMIN', 'MEDICO'] },
+      { id: 'agenda-medica', label: 'Agenda Médica', icon: Calendar, allowedRoles: ['ADMIN', 'MEDICO'] },
+      { id: 'reserva-horaria', label: 'Reserva Horaria', icon: Clock, allowedRoles: ['ADMIN', 'MEDICO'] },
     ],
   },
   {
-    title: 'Administración',
+    title: 'Vista Paciente',
     items: [
-      { id: 'facilities', label: 'Establecimientos', icon: Hospital, allowedRoles: ['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO', 'PACIENTE'] },
-      { id: 'reports', label: 'Indicadores', icon: Activity, allowedRoles: ['ADMIN', 'ADMINISTRATIVO'] },
-      { id: 'settings', label: 'Configuración', icon: Settings, allowedRoles: ['ADMIN', 'ADMINISTRATIVO'] },
+      { id: 'dashboard', label: 'Resumen Clínico', icon: LayoutDashboard, allowedRoles: ['PACIENTE'] },
+      { id: 'appointments', label: 'Citas Médicas', icon: Calendar, allowedRoles: ['PACIENTE'] },
+      { id: 'history', label: 'Historial Clínico', icon: FileText, allowedRoles: ['PACIENTE'] },
+      { id: 'facilities', label: 'Establecimientos', icon: Hospital, allowedRoles: ['PACIENTE'] },
     ],
-  },
+  }
 ];
 
 export function Sidebar({ activeView, onViewChange, isOpen = false, userRole }: SidebarProps) {
@@ -58,11 +61,11 @@ export function Sidebar({ activeView, onViewChange, isOpen = false, userRole }: 
   
   // - Filtramos los items de cada grupo y luego eliminamos los grupos que se quedaron sin items
   const filteredGroups = navigationGroups
-    .map(group => ({
+    .map((group) => ({
       ...group,
-      items: group.items.filter(item => item.allowedRoles.includes(currentRole))
+      items: group.items.filter((item) => item.allowedRoles.includes(currentRole))
     }))
-    .filter(group => group.items.length > 0);
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside
@@ -74,7 +77,6 @@ export function Sidebar({ activeView, onViewChange, isOpen = false, userRole }: 
     >
       {/* NAV */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
-
         {/* 3. Mapeamos sobre los grupos ya filtrados */}
         {filteredGroups.map((group) => (
           <div key={group.title}>
@@ -89,7 +91,7 @@ export function Sidebar({ activeView, onViewChange, isOpen = false, userRole }: 
 
                 return (
                   <button
-                    key={item.id}
+                    key={`${group.title}-${item.id}`}
                     onClick={() => onViewChange(item.id)}
                     className={cn(
                       'relative flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all',
@@ -118,21 +120,17 @@ export function Sidebar({ activeView, onViewChange, isOpen = false, userRole }: 
         ))}
       </nav>
 
-      {/* FOOTER CARD (sin "Paciente") */}
+      {/* FOOTER CARD */}
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-3 rounded-lg bg-[#f1f9fc] px-3 py-2.5">
-
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#0096c7] to-[#023e8a] text-white text-xs font-bold">
-            {/* Si quisieras las iniciales reales, se calcularían aquí */}
             JP
           </div>
 
           <div className="min-w-0">
             <p className="text-xs font-semibold text-[#023e8a] truncate">
-              {/* Aquí luego reemplazaremos con el nombre real de tu API */}
               Juan Pérez
             </p>
-
             <p className="text-[11px] text-slate-500 truncate">
               Activo
             </p>

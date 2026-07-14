@@ -6,7 +6,8 @@ import {
   AlertCircle, 
   ChevronRight,
   ClipboardList,
-  Stethoscope
+  Stethoscope,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
@@ -29,6 +30,7 @@ export function DashboardNurse() {
   const [pacientesPendientes, setPacientesPendientes] = useState<any[]>([]);
   const [pacientesEnBox, setPacientesEnBox] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchPendientes = async () => {
     try {
@@ -36,9 +38,9 @@ export function DashboardNurse() {
       const res = await urgenciaService.getPendientes();
       setPacientesPendientes(Array.isArray(res) ? res : []);
       
-      // Fetch triaged to see occupied boxes
+      // Fetch triaged to see occupied boxes and patients waiting for box
       const triagedRes = await urgenciaService.getTriaged();
-      setPacientesEnBox(Array.isArray(triagedRes) ? triagedRes.filter((p: any) => p.location) : []);
+      setPacientesEnBox(Array.isArray(triagedRes) ? triagedRes : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -51,6 +53,7 @@ export function DashboardNurse() {
   }, []);
 
   const handleTriage = async () => {
+    setIsSubmitting(true);
     try {
       const res = await urgenciaService.triage(triageId, { 
         categorizacion: nivelTriage,
@@ -68,8 +71,21 @@ export function DashboardNurse() {
       fetchPendientes();
     } catch (error) {
       toast.error('Error al procesar triage');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const handleAsignarBox = async (idEncuentro: string, nuevoBox: string) => {
+    try {
+      await urgenciaService.asignarBox(idEncuentro, nuevoBox);
+      toast.success(`Paciente asignado a ${nuevoBox}`);
+      fetchPendientes();
+    } catch (error) {
+      toast.error('Error al asignar box');
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'alta': return 'bg-red-500 text-white';
@@ -147,7 +163,6 @@ export function DashboardNurse() {
           </CardContent>
         </Card>
 
-        {/* Panel Lateral: Box y Estado */}
         <div className="space-y-6">
           <Card className="shadow-md border-none">
             <CardHeader className="border-b">
@@ -157,7 +172,7 @@ export function DashboardNurse() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="grid grid-cols-2 gap-2">
-                {['Box 1', 'Box 2', 'Box 3', 'Reanimación', 'Sala de Observación'].map(boxName => {
+                {['Box 1', 'Box 2', 'Box 3', 'Box 4', 'Box 5', 'Box 6', 'Box 7', 'Box 8', 'Reanimación', 'Box Dental'].map(boxName => {
                   const paciente = pacientesEnBox.find(p => p.location === boxName);
                   const isOccupied = !!paciente;
                   return (
@@ -171,18 +186,36 @@ export function DashboardNurse() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg border-none">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <AlertCircle className="h-8 w-8 text-white/80" />
-                <div>
-                  <h3 className="font-bold text-sm">Alertas Médicas</h3>
-                  <p className="text-[10px] text-amber-100">1 Paciente crítico detectado</p>
+          {/* ASIGNACIÓN DE BOX */}
+          <Card className="shadow-md border-none">
+            <CardHeader className="border-b py-4">
+              <CardTitle className="text-sm font-bold text-slate-700">Pacientes Categorizados</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+              {pacientesEnBox.length === 0 ? (
+                <p className="p-4 text-xs text-center text-slate-500">No hay pacientes categorizados</p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {pacientesEnBox.map((pac: any) => (
+                    <div key={pac.id} className="p-3 hover:bg-slate-50">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-xs font-bold text-slate-800">{pac.nombre}</p>
+                        <Badge className={`${getPriorityColor(pac.priority)} text-[9px]`}>{pac.priority}</Badge>
+                      </div>
+                      <select 
+                        value={pac.location || ''}
+                        onChange={(e) => handleAsignarBox(pac.id, e.target.value)}
+                        className="w-full text-xs p-1.5 border rounded border-slate-200 bg-white"
+                      >
+                        <option value="">Seleccionar Box...</option>
+                        {['Box 1', 'Box 2', 'Box 3', 'Box 4', 'Box 5', 'Box 6', 'Box 7', 'Box 8', 'Reanimación', 'Box Dental'].map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="bg-white/10 p-3 rounded-lg text-xs leading-relaxed italic">
-                "Paciente en Box 2 requiere validación de signos vitales urgente."
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -269,8 +302,9 @@ export function DashboardNurse() {
                 </div>
               </div>
 
-              <button onClick={handleTriage} className="w-full bg-[#f4a261] hover:bg-[#e76f51] text-white font-bold py-3 rounded-lg transition-colors mt-4">
-                Guardar Triage
+              <button onClick={handleTriage} disabled={isSubmitting} className="w-full bg-[#f4a261] hover:bg-[#e76f51] disabled:opacity-70 text-white font-bold py-3 rounded-lg transition-colors mt-4 flex items-center justify-center gap-2">
+                {isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                {isSubmitting ? 'Guardando...' : 'Guardar Triage'}
               </button>
             </CardContent>
           </Card>

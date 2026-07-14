@@ -6,7 +6,7 @@ const FHIR_BASE_URL = '/fhir';
 export const appointmentsRemote = {
   // Las demás funciones se pueden dejar con axios apuntando al 8085
   getAll(): Promise<any> {
-    return axios.get(`${FHIR_BASE_URL}/Appointment?_include=Appointment:patient`).then(r => r.data);
+    return axios.get(`/agendas/appointments`).then(r => r.data);
   },
 
   getTotalCount: async (): Promise<number> => {
@@ -28,6 +28,45 @@ export const appointmentsRemote = {
   },
 
   // 🚀 AHORA BUSCAMOS LAS CITAS REALMENTE OCUPADAS PARA LIBERAR EL CALENDARIO
+  getAvailableSlots: async (practitionerId: string, dateStr: string): Promise<string[]> => {
+    try {
+      // 1. Buscar el Schedule asociado al Practitioner
+      const scheduleRes = await axios.get(`${FHIR_BASE_URL}/Schedule?actor=Practitioner/${practitionerId}`);
+      if (!scheduleRes.data.entry || scheduleRes.data.entry.length === 0) {
+        return []; // No tiene agenda
+      }
+      
+      const scheduleId = scheduleRes.data.entry[0].resource.id;
+      
+      // 2. Buscar los Slots libres asociados a ese Schedule
+      // La API de FHIR permite buscar por schedule y status
+      const slotRes = await axios.get(`${FHIR_BASE_URL}/Slot?schedule=Schedule/${scheduleId}&status=free`);
+      
+      if (!slotRes.data.entry || slotRes.data.entry.length === 0) {
+        return []; // No tiene bloques libres
+      }
+
+      // 3. Filtrar los slots por la fecha indicada (dateStr "YYYY-MM-DD") y formatear a "HH:MM"
+      const availableTimes: string[] = [];
+      slotRes.data.entry.forEach((item: any) => {
+        const slot = item.resource;
+        if (slot.start) {
+          const [slotDate, slotTimeZ] = slot.start.split('T');
+          if (slotDate === dateStr) {
+            availableTimes.push(slotTimeZ.substring(0, 5));
+          }
+        }
+      });
+      
+      // Ordenamos las horas de menor a mayor
+      availableTimes.sort();
+      return availableTimes;
+    } catch (e) {
+      console.error("Error al obtener slots de FHIR:", e);
+      return [];
+    }
+  },
+
   getByPractitioner: async (practitionerId: string): Promise<any[]> => {
   try {
     const response = await axios.get(`${FHIR_BASE_URL}/Appointment?practitioner=${practitionerId}`);
@@ -88,7 +127,11 @@ export const appointmentsRemote = {
           id: cleanPatientId,
           active: true,
           name: [{ given: [dto.patientName || "Manuel"], family: dto.patientLastName || "Cáceres" }],
-          identifier: [{ system: "https://www.registrocivil.cl/RUT", value: dto.patientId }]
+          identifier: [{ system: "https://www.registrocivil.cl/RUT", value: dto.patientId }],
+          telecom: [
+            { system: "phone", value: dto.patientPhone || dto.phone || "+56900000000" },
+            { system: "email", value: dto.patientEmail || dto.email || "paciente@correo.cl" }
+          ]
         });
         console.log(`✅ Patient/${cleanPatientId} creado.`);
       } catch (e: any) { console.warn("Error en Patient:", e.message); }
@@ -144,27 +187,36 @@ export const appointmentsRemote = {
         isoEnd = endDate.toISOString();
       }
 
+      const patientDisplay = `${dto.patientName || "Paciente"} ${dto.patientLastName || ""}`.trim();
+      const practitionerDisplay = dto.doctorName || "Médico Asignado";
+
       // 4. 📅 CREAR CITA
       const fhirAppointment = {
         resourceType: "Appointment",
-        status: "booked",
+        status: "proposed",
         start: isoStart,
         end: isoEnd,
         description: `Presencial · Especialidad: Cardiología · Vía Portal Web`,
         participant: [
-          { actor: { reference: `Patient/${cleanPatientId}` }, status: "accepted" },
-          { actor: { reference: `Practitioner/${cleanPractitionerId}` }, status: "accepted" }
+          { 
+            actor: { reference: `Patient/${cleanPatientId}`, display: patientDisplay || "Paciente Desconocido" }, 
+            status: "accepted" 
+          },
+          { 
+            actor: { reference: `Practitioner/${cleanPractitionerId}`, display: practitionerDisplay }, 
+            status: "accepted" 
+          }
         ]
       };
 
       try {
-        const response = await axios.post(`${FHIR_BASE_URL}/Appointment`, fhirAppointment);
+        const response = await axios.post(`/agendas/appointments/fhir`, fhirAppointment);
         return response.data;
       } catch (postError) {
         console.warn("⚠️ Servidor FHIR inalcanzable. Usando mock de emergencia para creación de cita.");
         return {
           id: `RN-${Math.floor(1000 + Math.random() * 9000)}`,
-          status: "booked",
+          status: "proposed",
           start: isoStart,
           end: isoEnd
         };
@@ -177,11 +229,19 @@ export const appointmentsRemote = {
     }
   },
 
+  updateStatus: async (id: string, status: string): Promise<any> => {
+    return axios.patch(`/agendas/appointments/${id}/status`, { status }).then(r => r.data);
+  },
+
+  updateTime: async (id: string, isoStart: string, isoEnd: string): Promise<any> => {
+    return axios.patch(`/agendas/appointments/${id}/time`, { start: isoStart, end: isoEnd }).then(r => r.data);
+  },
+
   update(id: string, dto: Partial<AppointmentDTO>): Promise<AppointmentDTO> {
     return Promise.reject(new Error("Actualización no implementada en bypass FHIR"));
   },
 
   cancel(id: string): Promise<void> {
-    return axios.delete(`${FHIR_BASE_URL}/Appointment/${id}`).then(() => undefined);
+    return axios.patch(`/agendas/appointments/${id}/status`, { status: "cancelled" }).then(() => undefined);
   },
 };

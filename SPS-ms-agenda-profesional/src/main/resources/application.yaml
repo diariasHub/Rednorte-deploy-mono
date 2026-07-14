@@ -4,6 +4,19 @@ spring:
   cloud:
     compatibility-verifier:
       enabled: false
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/hapi_fhir}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
 
 eureka:
   client:

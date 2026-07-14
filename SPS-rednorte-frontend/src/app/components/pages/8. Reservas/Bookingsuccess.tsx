@@ -30,9 +30,11 @@ export function BookingSuccess({
       </div>
 
       <div>
-        <h2 className="text-2xl font-semibold text-[#0b3c5d]">¡Reserva confirmada!</h2>
-        <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">
-          Tu hora ha sido agendada exitosamente. Recibirás un correo y SMS con los detalles.
+        <h2 className="text-2xl font-bold text-[#0b3c5d]">¡Reserva Pre-Agendada!</h2>
+        <p className="text-sm text-slate-500 mt-2">
+          Hemos enviado un correo electrónico a <strong>{data.email}</strong>. 
+          <br/>
+          Por favor, haz clic en el enlace dentro del correo para confirmar tu cita.
         </p>
       </div>
 

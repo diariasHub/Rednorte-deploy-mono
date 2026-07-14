@@ -5,7 +5,8 @@ import { urgenciaService } from '../../../../services/urgencia.service';
 import { toast } from 'sonner';
 
 export function UrgenciasView() {
-  const [activeTab, setActiveTab] = useState<'ingreso' | 'triage' | 'espera' | 'atencion'>('ingreso');
+  const [activeTab, setActiveTab] = useState<'ingreso' | 'triage' | 'espera' | 'atencion' | 'tratamientos' | 'altas'>('ingreso');
+  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
 
   // State for Ingreso
   const [rutIngreso, setRutIngreso] = useState('');
@@ -29,6 +30,39 @@ export function UrgenciasView() {
     glicemia: ''
   });
 
+  // Calcular triage automáticamente cuando cambian los signos vitales
+  useEffect(() => {
+    // Solo calculamos si hay al menos un valor numérico ingresado
+    if (!vitalSigns.frecuenciaCardiaca && !vitalSigns.saturacion && !vitalSigns.temperatura && !vitalSigns.frecuenciaRespiratoria && !vitalSigns.eva && !vitalSigns.glasgow) {
+      return;
+    }
+
+    let sugerido = 5; 
+    
+    const fc = parseInt(vitalSigns.frecuenciaCardiaca);
+    const spo2 = parseInt(vitalSigns.saturacion);
+    const temp = parseFloat(vitalSigns.temperatura);
+    const fr = parseInt(vitalSigns.frecuenciaRespiratoria);
+    const eva = parseInt(vitalSigns.eva);
+    const glasgow = parseInt(vitalSigns.glasgow);
+
+    // Reglas ESI (Emergency Severity Index) - Estándar Internacional
+    if (glasgow <= 8 || spo2 < 90 || (fr > 0 && fr < 10) || fr > 35) {
+      sugerido = 1; // Riesgo Vital Inmediato (Rojo)
+    } 
+    else if ((glasgow > 8 && glasgow <= 13) || (spo2 >= 90 && spo2 < 94) || fc > 120 || (fc > 0 && fc < 50) || eva >= 8 || temp > 40) {
+      sugerido = 2; // Riesgo Vital Alto (Naranja)
+    }
+    else if ((fc > 100 && fc <= 120) || (spo2 >= 94 && spo2 < 96) || temp > 38.5 || (eva >= 5 && eva < 8)) {
+      sugerido = 3; // Mediana Gravedad (Amarillo)
+    }
+    else if (eva >= 3 && eva < 5) {
+      sugerido = 4; // Riesgo Bajo (Verde)
+    }
+
+    setNivelTriage(sugerido.toString());
+  }, [vitalSigns]);
+
   const [isLoadingPendientes, setIsLoadingPendientes] = useState(false);
 
   const fetchPendientes = async () => {
@@ -44,11 +78,10 @@ export function UrgenciasView() {
   };
 
   useEffect(() => {
-    if (activeTab === 'triage') {
-      fetchPendientes();
-    } else if (activeTab === 'atencion') {
-      fetchTriaged();
-    }
+    if (activeTab === 'triage') fetchPendientes();
+    else if (activeTab === 'atencion') fetchTriaged();
+    else if (activeTab === 'tratamientos') fetchTratamientos();
+    else if (activeTab === 'altas') fetchAltas();
   }, [activeTab]);
 
   // State for Espera
@@ -62,6 +95,22 @@ export function UrgenciasView() {
   const [atencionId, setAtencionId] = useState('');
   const [diagnostico, setDiagnostico] = useState('');
   const [isLoadingTriaged, setIsLoadingTriaged] = useState(false);
+  
+  // Nuevo state para prescripción en box
+  const [medicamento, setMedicamento] = useState('');
+  const [indicacionesMedicamento, setIndicacionesMedicamento] = useState('');
+
+  // State for Tratamientos (Enfermero)
+  const [tratamientosPendientes, setTratamientosPendientes] = useState<any[]>([]);
+  const [showTratamientoModal, setShowTratamientoModal] = useState(false);
+  const [selectedTratamiento, setSelectedTratamiento] = useState<any>(null);
+  const [adminDetalles, setAdminDetalles] = useState({ dosis: '', via: '', tecnica: '', motivo: '' });
+  const [isLoadingTratamientos, setIsLoadingTratamientos] = useState(false);
+
+  // State for Altas
+  const [pacientesAltas, setPacientesAltas] = useState<any[]>([]);
+  const [showEpicrisisModal, setShowEpicrisisModal] = useState(false);
+  const [selectedFichaEpicrisis, setSelectedFichaEpicrisis] = useState<any>(null);
 
   const fetchTriaged = async () => {
     setIsLoadingTriaged(true);
@@ -72,6 +121,27 @@ export function UrgenciasView() {
       toast.error('Error al cargar pacientes para atención');
     } finally {
       setIsLoadingTriaged(false);
+    }
+  };
+
+  const fetchTratamientos = async () => {
+    setIsLoadingTratamientos(true);
+    try {
+      const res = await urgenciaService.getTratamientosPendientes();
+      setTratamientosPendientes(res);
+    } catch (error) {
+      toast.error('Error al cargar tratamientos pendientes');
+    } finally {
+      setIsLoadingTratamientos(false);
+    }
+  };
+
+  const fetchAltas = async () => {
+    try {
+      const res = await urgenciaService.getAltas();
+      setPacientesAltas(res);
+    } catch (error) {
+      toast.error('Error al cargar pacientes de alta');
     }
   };
 
@@ -87,15 +157,46 @@ export function UrgenciasView() {
     }
   };
 
+  // RUT Formatter
+  const formatRut = (value: string) => {
+    let rut = value.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (rut.length > 1) {
+      const body = rut.slice(0, -1);
+      const dv = rut.slice(-1);
+      rut = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
+    }
+    return rut;
+  };
+
+  const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRutIngreso(formatRut(e.target.value));
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleIngreso = async () => {
+    if (!rutIngreso || !nombrePaciente || !motivo) {
+      toast.error('Por favor complete todos los campos');
+      return;
+    }
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    // Validar si ya está en espera
+    try {
+      await urgenciaService.consultarEspera(rutIngreso);
+      // Si la consulta no arroja error, significa que el paciente ya está en espera
+      toast.error('El paciente ya se encuentra en la lista de espera actual.');
+      setIsSubmitting(false);
+      return;
+    } catch (err) {
+      // Si arroja error (ej. 404), significa que NO está en espera, entonces podemos continuar
+    }
+
     try {
       const res = await urgenciaService.ingreso(rutIngreso, motivo, nombrePaciente);
-      toast.success('Ingreso registrado', { description: res });
-      // Extraer ID de la respuesta para setearlo en otros tabs si es necesario
+      toast.success('Ingreso registrado con éxito', { description: res });
+      
       if (typeof res === 'string') {
         const match = res.match(/ID Encuentro:\s*(\S+)/);
         if (match && match[1]) {
@@ -106,6 +207,8 @@ export function UrgenciasView() {
       setRutIngreso('');
       setNombrePaciente('');
       setMotivo('');
+      // Opcional: pasar a la vista de triage para que el enfermero lo vea
+      // setActiveTab('triage');
     } catch (error: any) {
       const msg = error.response?.data || 'Error al registrar ingreso';
       toast.error(msg);
@@ -141,14 +244,66 @@ export function UrgenciasView() {
   };
 
   const handleAlta = async () => {
+    setIsGlobalLoading(true);
     try {
       const res = await urgenciaService.alta(atencionId, diagnostico);
       toast.success('Alta registrada', { description: res });
       setDiagnostico('');
       setShowAtencionModal(false);
       fetchTriaged();
+    } catch (error: any) {
+      toast.error(error.response?.data || 'Error al dar de alta (revise si hay tratamientos pendientes)');
+    } finally {
+      setIsGlobalLoading(false);
+    }
+  };
+
+  const handleIndicarTratamiento = async () => {
+    if (!medicamento || !indicacionesMedicamento) {
+      toast.error('Complete medicamento e indicaciones');
+      return;
+    }
+    setIsGlobalLoading(true);
+    try {
+      const res = await urgenciaService.indicarTratamiento(atencionId, medicamento, indicacionesMedicamento);
+      toast.success('Tratamiento recetado', { description: res });
+      setMedicamento('');
+      setIndicacionesMedicamento('');
+      // Recargar ficha
+      const ficha = await urgenciaService.getFicha(atencionId);
+      setFichaClinica(ficha);
     } catch (error) {
-      toast.error('Error al dar de alta');
+      toast.error('Error al indicar tratamiento');
+    } finally {
+      setIsGlobalLoading(false);
+    }
+  };
+
+  const handleResolverTratamiento = async (estado: string) => {
+    if (!selectedTratamiento) return;
+    if (estado === 'administrado' && (!adminDetalles.dosis || !adminDetalles.via)) {
+      toast.error('Debe completar Dosis y Vía de administración');
+      return;
+    }
+    if (estado === 'rechazado' && !adminDetalles.motivo) {
+      toast.error('Debe indicar el motivo del rechazo');
+      return;
+    }
+    
+    setIsGlobalLoading(true);
+    try {
+      const res = await urgenciaService.resolverTratamiento(selectedTratamiento.idRequest, {
+        estado,
+        ...adminDetalles
+      });
+      toast.success('Tratamiento actualizado', { description: res });
+      setShowTratamientoModal(false);
+      setAdminDetalles({ dosis: '', via: '', tecnica: '', motivo: '' });
+      fetchTratamientos();
+    } catch (error) {
+      toast.error('Error al resolver tratamiento');
+    } finally {
+      setIsGlobalLoading(false);
     }
   };
 
@@ -205,7 +360,7 @@ export function UrgenciasView() {
                 <input 
                   type="text" 
                   value={rutIngreso}
-                  onChange={(e) => setRutIngreso(e.target.value)}
+                  onChange={handleRutChange}
                   className="w-full border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-[#e63946]/20 focus:border-[#e63946] outline-none" 
                   placeholder="Ej: 12345678-9" 
                 />
@@ -302,7 +457,13 @@ export function UrgenciasView() {
                       <select 
                         value={nivelTriage}
                         onChange={(e) => setNivelTriage(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-[#f4a261]/20 focus:border-[#f4a261] outline-none font-semibold text-slate-700"
+                        className={`w-full border rounded-lg p-3 outline-none font-bold transition-colors ${
+                          nivelTriage === '1' ? 'bg-red-100 border-red-300 text-red-800' :
+                          nivelTriage === '2' ? 'bg-orange-100 border-orange-300 text-orange-800' :
+                          nivelTriage === '3' ? 'bg-yellow-100 border-yellow-300 text-yellow-800' :
+                          nivelTriage === '4' ? 'bg-green-100 border-green-300 text-green-800' :
+                          'bg-blue-100 border-blue-300 text-blue-800'
+                        }`}
                       >
                         <option value="1">ESI 1 - Riesgo Vital Inmediato (Rojo)</option>
                         <option value="2">ESI 2 - Riesgo Vital Alto (Naranja)</option>
@@ -377,7 +538,7 @@ export function UrgenciasView() {
                   <input 
                     type="text" 
                     value={rutEspera}
-                    onChange={(e) => setRutEspera(e.target.value)}
+                    onChange={(e) => setRutEspera(formatRut(e.target.value))}
                     className="flex-1 border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-[#2a9d8f]/20 focus:border-[#2a9d8f] outline-none" 
                     placeholder="Ej: 12345678-9" 
                   />

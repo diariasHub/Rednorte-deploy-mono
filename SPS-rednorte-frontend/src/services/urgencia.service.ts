@@ -9,7 +9,7 @@ class UrgenciaService {
     return urgenciaRemote.triage(idEncuentro, payload);
   }
 
-  consultarEspera(rut: string): Promise<{ rut: string; tiempoEsperaMinutos: number }> {
+  consultarEspera(rut: string): Promise<{ rut: string; tiempoEsperaMinutos: number; idEncuentro: string }> {
     return urgenciaRemote.consultarEspera(rut);
   }
 
@@ -39,6 +39,22 @@ class UrgenciaService {
 
   getAltas(): Promise<any[]> {
     return urgenciaRemote.getAltas();
+  }
+
+  getRechazadas(): Promise<any[]> {
+    return urgenciaRemote.getRechazadas();
+  }
+
+  indicarTratamiento(idEncuentro: string, medicamento: string, indicaciones: string): Promise<string> {
+    return urgenciaRemote.indicarTratamiento(idEncuentro, { medicamento, indicaciones });
+  }
+
+  getTratamientosPendientes(): Promise<any[]> {
+    return urgenciaRemote.getTratamientosPendientes();
+  }
+
+  resolverTratamiento(idRequest: string, payload: { estado: string; dosis?: string; via?: string; tecnica?: string; motivo?: string }): Promise<string> {
+    return urgenciaRemote.resolverTratamiento(idRequest, payload);
   }
 }
 

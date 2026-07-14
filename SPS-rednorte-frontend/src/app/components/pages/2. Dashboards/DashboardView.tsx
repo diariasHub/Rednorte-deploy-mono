@@ -71,23 +71,7 @@ export function DashboardView({ initialRole, onReserva, onIrAAtencion }: Dashboa
             Reservar hora
           </button>
 
-          {/* SELECTOR DE VISTA (Navbar de desarrollo) 
-              Solo dejamos que el ADMIN global cambie de vista a placer para pruebas */}
-          {initialRole === 'ADMIN' && (
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full border border-slate-200 ml-auto lg:ml-2">
-              {(['ADMIN', 'ADMINISTRATIVO', 'ENFERMERO', 'MEDICO'] as UserRole[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setCurrentRole(r)}
-                  className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all ${
-                    currentRole === r ? 'bg-white text-[#004a87] shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {r.slice(0, 5)}
-                </button>
-              ))}
-            </div>
-          )}
+
         </div>
       </div>
 

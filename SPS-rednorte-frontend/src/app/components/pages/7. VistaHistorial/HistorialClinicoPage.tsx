@@ -21,7 +21,27 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
     return <HistoryView patientId={loggedPatientId} />;
   }
 
-  // 2. FLUJO MÉDICO: Manejador de la búsqueda por RUT
+  // 2. Formateador de RUT (solo aplica si comienza con números)
+  const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    
+    // Si contiene letras (que no sea la k) o espacios, asumimos que es nombre y no formateamos
+    if (!/^[0-9kK\.\-]+$/.test(val) && val !== '') {
+      setRutBusqueda(val);
+      return;
+    }
+    
+    // Es posible RUT, formatear
+    let rut = val.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (rut.length > 1) {
+      const body = rut.slice(0, -1);
+      const dv = rut.slice(-1);
+      rut = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
+    }
+    setRutBusqueda(rut);
+  };
+
+  // 3. FLUJO MÉDICO: Manejador de la búsqueda por RUT o Nombre
   const handleBuscarRut = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rutBusqueda.trim()) return;
@@ -30,9 +50,12 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
     setError(null);
 
     try {
-      // Buscamos al paciente en FHIR por su RUT (identifier)
-      // Ajusta el puerto (8085) o la ruta si pasas esto por tu API Gateway
-      const response = await fetch(`/fhir/Patient?identifier=${rutBusqueda}`, {
+      // Determinamos si es RUT o Nombre. Si empieza con número, asumimos RUT.
+      const isRut = /^[0-9]/.test(rutBusqueda);
+      const queryParam = isRut ? `identifier=${rutBusqueda}` : `name=${encodeURIComponent(rutBusqueda)}`;
+
+      // Buscamos al paciente en FHIR
+      const response = await fetch(`/fhir/Patient?${queryParam}`, {
         headers: { 'Accept': 'application/fhir+json' }
       });
 
@@ -42,10 +65,11 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
 
       if (data.total > 0) {
         // Obtenemos el ID interno del recurso FHIR (ej: "p-196655077")
+        // TODO: Si hay varios, habría que mostrar una lista. Por ahora, toma el primero.
         const fhirId = data.entry[0].resource.id;
         setPacienteEncontradoId(fhirId);
       } else {
-        setError('No se encontró ninguna ficha clínica asociada a este RUT.');
+        setError('No se encontró ninguna ficha clínica asociada a esta búsqueda.');
       }
     } catch (err: any) {
       setError(err.message || 'Error de conexión al buscar paciente.');
@@ -55,7 +79,7 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
   };
 
   // 3. FLUJO MÉDICO (PACIENTE ENCONTRADO): Muestra botón volver + la Ficha
-  if (userRole === 'MEDICO' && pacienteEncontradoId) {
+  if ((userRole === 'MEDICO' || userRole === 'ENFERMERO') && pacienteEncontradoId) {
     return (
       <div className="space-y-4">
         <button
@@ -75,12 +99,12 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
     );
   }
 
-  // 4. FLUJO MÉDICO (BUSCADOR INICIAL): Vista para buscar el RUT
+  // 4. FLUJO MÉDICO/ENFERMERO (BUSCADOR INICIAL): Vista para buscar el RUT
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Acceso a Ficha Clínica</h2>
-        <p className="text-gray-500 mt-2">Ingrese el RUT del paciente para consultar su historial médico en la red.</p>
+        <p className="text-gray-500 mt-2">Ingrese el RUT o Nombre del paciente para consultar su historial médico en la red.</p>
       </div>
 
       <Card className="w-full max-w-md shadow-lg border-gray-200">
@@ -88,7 +112,7 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
           <form onSubmit={handleBuscarRut} className="space-y-4">
             <div>
               <label htmlFor="rut" className="block text-sm font-medium text-gray-700 mb-1">
-                RUT del Paciente
+                Buscar Paciente
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -98,9 +122,9 @@ export function HistorialClinicoPage({ userRole, loggedPatientId }: HistorialCli
                   type="text"
                   id="rut"
                   value={rutBusqueda}
-                  onChange={(e) => setRutBusqueda(e.target.value)}
+                  onChange={handleRutChange}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="Ej: 19665507-7"
+                  placeholder="Ej: 19.665.507-7 o Juan Pérez"
                   disabled={loading}
                   required
                 />

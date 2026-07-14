@@ -3,7 +3,6 @@ import { Calendar, ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { BookingData } from '../../../types/Booking';
 import { appointmentsRemote } from '../../../../remotes/appointments.remote'; 
 import {
-  MOCK_SLOTS,
   CENTER_ID,
   CENTER_NAME,
   MONTHS,
@@ -23,7 +22,7 @@ export function Step3FechaHora({ data, onChange, onNext, onBack }: Step3FechaHor
   const [calYear,  setCalYear]  = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   
-  const [occupiedAppointments, setOccupiedAppointments] = useState<any[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const selectedDate = data.date  ?? '';
@@ -32,7 +31,7 @@ export function Step3FechaHora({ data, onChange, onNext, onBack }: Step3FechaHor
 
   const currentPractitionerId = (data as any).practitionerId || (data as any).doctorId;
 
-  // 🔄 1. CARGA CORREGIDA: Desempaqueta el Bundle de HAPI FHIR y normaliza el ID
+  // 🔄 1. Cargar Slots Reales desde FHIR
   useEffect(() => {
     let searchId = currentPractitionerId;
     
@@ -41,46 +40,23 @@ export function Step3FechaHora({ data, onChange, onNext, onBack }: Step3FechaHor
       searchId = 'medico-1101'; 
     }
 
-    if (searchId) {
+    if (searchId && selectedDate) {
       setLoading(true);
-      appointmentsRemote.getByPractitioner(searchId)
-        .then((res: any) => {
-          // Si el servidor responde con un Bundle, extraemos la propiedad 'resource' de sus entradas
-          const list = res?.entry ? res.entry.map((e: any) => e.resource) : res;
-          setOccupiedAppointments(Array.isArray(list) ? list : []);
+      appointmentsRemote.getAvailableSlots(searchId, selectedDate)
+        .then((slots: string[]) => {
+          setAvailableSlots(slots);
         })
         .catch((err: any) => console.error("Error cargando agenda real:", err))
         .finally(() => setLoading(false));
+    } else {
+      setAvailableSlots([]);
     }
-  }, [currentPractitionerId]);
+  }, [currentPractitionerId, selectedDate]);
 
-  // 🕒 2. FILTRADO CORREGIDO: Traduce las horas UTC de FHIR a la zona horaria de Chile antes de evaluar
-  // 🕒 2. FILTRADO CORREGIDO: Leemos el string crudo sin usar 'new Date()' 
-  // para evitar que el navegador reste horas por la zona horaria.
-  const dynamicSlots = MOCK_SLOTS.map((slot) => {
-    const isOccupied = occupiedAppointments.some((appt) => {
-      if (!appt.start) return false;
-      
-      try {
-        // appt.start viene como "2026-06-15T13:00:00Z"
-        // Lo partimos por la "T"
-        const [datePart, timeWithZ] = appt.start.split('T'); 
-        
-        // timeWithZ es "13:00:00Z". Cortamos solo los primeros 5 caracteres: "13:00"
-        const timePart = timeWithZ.substring(0, 5);
-        
-        // Ahora comparamos peras con peras: "2026-06-15" === "2026-06-15" y "13:00" === "13:00"
-        return datePart === selectedDate && timePart === slot.time;
-      } catch (e) {
-        return false; // Por si alguna fecha viene con formato incorrecto
-      }
-    });
-
-    return {
-      time: slot.time,
-      available: !isOccupied,
-    };
-  });
+  const dynamicSlots = availableSlots.map((time) => ({
+    time,
+    available: true,
+  }));
 
   function changeMonth(dir: number) {
     let m = calMonth + dir;

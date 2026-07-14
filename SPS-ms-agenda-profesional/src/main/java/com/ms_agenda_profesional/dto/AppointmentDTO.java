@@ -7,5 +7,7 @@ public record AppointmentDTO(
     String patientRut,
     String start,
     String status,
-    String patientAge
-) {}
+    String patientAge,
+    String patientPhone,
+    String patientEmail
+) implements java.io.Serializable {}

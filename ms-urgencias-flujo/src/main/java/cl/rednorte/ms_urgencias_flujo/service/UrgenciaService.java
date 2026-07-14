@@ -122,15 +122,45 @@ public void procesarTriage(String id, Map<String, Object> datosTriage) {
         fhirClient.transaction().withBundle(transactionBundle).execute();
     }
 
-    public int calcularTiempoEspera(String rut) {
-        // 1. Buscar encuentros activos en triage
-        Bundle bundle = fhirClient.search().forResource(Encounter.class)
-                .where(Encounter.STATUS.exactly().code("triaged"))
+    public Map<String, Object> calcularTiempoEspera(String rut) {
+        // 1. Buscar paciente por RUT
+        Bundle patientBundle = fhirClient.search().forResource(Patient.class)
+                .where(Patient.IDENTIFIER.exactly().systemAndCode("http://registrocivil.cl/rut", rut))
                 .returnBundle(Bundle.class).execute();
+                
+        if (patientBundle.getEntry().isEmpty()) {
+            throw new RuntimeException("No se encontró paciente con el RUT ingresado.");
+        }
+        
+        String patientId = patientBundle.getEntry().get(0).getResource().getIdElement().getIdPart();
+        
+        // 2. Buscar encuentro activo
+        Bundle activeEncounters = fhirClient.search().forResource(Encounter.class)
+                .where(Encounter.SUBJECT.hasId("Patient/" + patientId))
+                .returnBundle(Bundle.class).execute();
+                
+        String activeEncounterId = null;
+        for (Bundle.BundleEntryComponent entry : activeEncounters.getEntry()) {
+            Encounter enc = (Encounter) entry.getResource();
+            Encounter.EncounterStatus status = enc.getStatus();
+            if (status == Encounter.EncounterStatus.ARRIVED || 
+                status == Encounter.EncounterStatus.TRIAGED || 
+                status == Encounter.EncounterStatus.INPROGRESS) {
+                activeEncounterId = enc.getIdElement().getIdPart();
+                break;
+            }
+        }
+        
+        if (activeEncounterId == null) {
+            throw new RuntimeException("El paciente no tiene una atención de urgencia activa en este momento.");
+        }
 
-        // 2. Lógica Algorítmica: Contar pacientes con mayor gravedad en la lista
-        // aquí se itera el bundle sumando minutos según prioridad relativa.
-        return 45; 
+        // Lógica Algorítmica simplificada
+        Map<String, Object> result = new HashMap<>();
+        result.put("tiempoEsperaMinutos", 45); // Mock
+        result.put("idEncuentro", activeEncounterId);
+        
+        return result;
     }
 
 public void cancelarAtencion(String idEncuentro, String rutConfirmacion) {
@@ -174,6 +204,43 @@ public void cancelarAtencion(String idEncuentro, String rutConfirmacion) {
         }
         ficha.put("signosVitales", signosVitales);
 
+        // Buscar Tratamientos (MedicationRequest)
+        Bundle medsBundle = fhirClient.search().forResource(MedicationRequest.class)
+                .where(MedicationRequest.ENCOUNTER.hasId("Encounter/" + idEncuentro))
+                .returnBundle(Bundle.class).execute();
+                
+        List<Map<String, Object>> tratamientos = new ArrayList<>();
+        for (Bundle.BundleEntryComponent entry : medsBundle.getEntry()) {
+            MedicationRequest req = (MedicationRequest) entry.getResource();
+            Map<String, Object> trat = new HashMap<>();
+            trat.put("medicamento", req.hasMedicationCodeableConcept() ? req.getMedicationCodeableConcept().getText() : "Desconocido");
+            trat.put("estado", req.getStatus() != null ? req.getStatus().toCode() : "unknown");
+            trat.put("fechaIndicacion", req.getAuthoredOn());
+            
+            // Buscar si hay administración para este request
+            Bundle adminBundle = fhirClient.search().forResource(MedicationAdministration.class)
+                .where(MedicationAdministration.REQUEST.hasId("MedicationRequest/" + req.getIdElement().getIdPart()))
+                .returnBundle(Bundle.class).execute();
+                
+            if (!adminBundle.getEntry().isEmpty()) {
+                MedicationAdministration admin = (MedicationAdministration) adminBundle.getEntry().get(0).getResource();
+                trat.put("estadoAdministracion", admin.getStatus() != null ? admin.getStatus().toCode() : "unknown");
+                if (admin.hasEffectiveDateTimeType()) {
+                    trat.put("fechaAdministracion", admin.getEffectiveDateTimeType().getValue());
+                }
+                if (admin.hasDosage()) {
+                    trat.put("dosis", admin.getDosage().getText());
+                    if (admin.getDosage().hasRoute()) trat.put("via", admin.getDosage().getRoute().getText());
+                    if (admin.getDosage().hasMethod()) trat.put("tecnica", admin.getDosage().getMethod().getText());
+                }
+                if (admin.hasStatusReason() && !admin.getStatusReason().isEmpty()) {
+                    trat.put("motivoRechazo", admin.getStatusReasonFirstRep().getText());
+                }
+            }
+            tratamientos.add(trat);
+        }
+        ficha.put("tratamientos", tratamientos);
+
         return ficha;
     }
 
@@ -192,6 +259,16 @@ public void cancelarAtencion(String idEncuentro, String rutConfirmacion) {
     }
 
     public void finalizarAtencion(String id, String diagnostico, boolean hospitalizacion) {
+        // Validar que no existan tratamientos activos sin resolver
+        Bundle activeMeds = fhirClient.search().forResource(MedicationRequest.class)
+                .where(MedicationRequest.ENCOUNTER.hasId("Encounter/" + id))
+                .and(MedicationRequest.STATUS.exactly().code("active"))
+                .returnBundle(Bundle.class).execute();
+                
+        if (!activeMeds.getEntry().isEmpty()) {
+            throw new RuntimeException("Falta administrar tratamiento. Existen indicaciones médicas pendientes.");
+        }
+
         Encounter encuentro = fhirClient.read().resource(Encounter.class).withId(id).execute();
         encuentro.setStatus(Encounter.EncounterStatus.FINISHED);
 
@@ -362,5 +439,188 @@ public void cancelarAtencion(String idEncuentro, String rutConfirmacion) {
         }
         
         return pacientes;
+    }
+
+    public List<Map<String, Object>> obtenerPacientesRechazados() {
+        Bundle bundle = fhirClient.search().forResource(Encounter.class)
+                .where(Encounter.STATUS.exactly().code("cancelled"))
+                .returnBundle(Bundle.class).execute();
+
+        List<Map<String, Object>> pacientes = new ArrayList<>();
+        
+        for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+            Encounter encuentro = (Encounter) entry.getResource();
+            
+            Map<String, Object> pac = new HashMap<>();
+            pac.put("id", encuentro.getIdElement().getIdPart());
+            
+            // Motivo de cancelación
+            String motivo = "Rechazo del paciente / Administrador";
+            if (encuentro.hasExtension()) {
+                for(Extension ext : encuentro.getExtension()) {
+                    if("http://rednorte.cl/fhir/StructureDefinition/motivo-cancelacion".equals(ext.getUrl())) {
+                        if (ext.getValue() instanceof StringType) {
+                            motivo = ((StringType) ext.getValue()).getValue();
+                        }
+                    }
+                }
+            }
+            pac.put("motivoCancelacion", motivo);
+            
+            if (encuentro.hasSubject() && encuentro.getSubject().getReference() != null) {
+                String ref = encuentro.getSubject().getReference();
+                if (ref.startsWith("Patient/")) {
+                    try {
+                        Patient patient = fhirClient.read().resource(Patient.class).withId(ref.replace("Patient/", "")).execute();
+                        if (patient.hasName() && !patient.getName().isEmpty()) {
+                            pac.put("nombre", patient.getNameFirstRep().getText());
+                        } else {
+                            pac.put("nombre", "Desconocido");
+                        }
+                        if (patient.hasIdentifier() && !patient.getIdentifier().isEmpty()) {
+                            pac.put("rut", patient.getIdentifierFirstRep().getValue());
+                        } else {
+                            pac.put("rut", "Sin RUT");
+                        }
+                    } catch (Exception e) {
+                        pac.put("nombre", "Desconocido");
+                        pac.put("rut", "Sin RUT");
+                    }
+                }
+            } else {
+                pac.put("nombre", "Desconocido");
+                pac.put("rut", "Sin RUT");
+            }
+            
+            pacientes.add(pac);
+        }
+        
+        return pacientes;
+    }
+
+    public void indicarTratamientoUrgencia(String idEncuentro, String medicamento, String indicaciones) {
+        Encounter encuentro = fhirClient.read().resource(Encounter.class).withId(idEncuentro).execute();
+        
+        MedicationRequest request = new MedicationRequest();
+        request.setStatus(MedicationRequest.MedicationRequestStatus.ACTIVE);
+        request.setIntent(MedicationRequest.MedicationRequestIntent.ORDER);
+        request.setSubject(encuentro.getSubject());
+        request.setEncounter(new Reference("Encounter/" + idEncuentro));
+        
+        request.setMedication(new CodeableConcept().setText(medicamento));
+        
+        org.hl7.fhir.r4.model.Dosage dosage = new org.hl7.fhir.r4.model.Dosage();
+        dosage.setText(indicaciones);
+        request.addDosageInstruction(dosage);
+        
+        request.setAuthoredOn(new java.util.Date());
+        
+        fhirClient.create().resource(request).execute();
+    }
+
+    public List<Map<String, Object>> obtenerTratamientosPendientes() {
+        Bundle bundle = fhirClient.search().forResource(MedicationRequest.class)
+                .where(MedicationRequest.STATUS.exactly().code("active"))
+                .returnBundle(Bundle.class).execute();
+
+        List<Map<String, Object>> tratamientos = new ArrayList<>();
+        
+        for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+            MedicationRequest req = (MedicationRequest) entry.getResource();
+            
+            Map<String, Object> trat = new HashMap<>();
+            trat.put("idRequest", req.getIdElement().getIdPart());
+            trat.put("medicamento", req.hasMedicationCodeableConcept() ? req.getMedicationCodeableConcept().getText() : "Desconocido");
+            if (req.hasDosageInstruction() && !req.getDosageInstruction().isEmpty()) {
+                trat.put("indicaciones", req.getDosageInstructionFirstRep().getText());
+            } else {
+                trat.put("indicaciones", "Sin indicaciones");
+            }
+            trat.put("fechaIndicacion", req.getAuthoredOn());
+            
+            if (req.hasEncounter() && req.getEncounter().getReference() != null) {
+                String refEncounter = req.getEncounter().getReference().replace("Encounter/", "");
+                trat.put("idEncuentro", refEncounter);
+                
+                try {
+                    Encounter encounter = fhirClient.read().resource(Encounter.class).withId(refEncounter).execute();
+                    if (encounter.hasLocation() && !encounter.getLocation().isEmpty()) {
+                        trat.put("box", encounter.getLocationFirstRep().getLocation().getDisplay());
+                    } else {
+                        trat.put("box", "Desconocido");
+                    }
+                    
+                    if (encounter.hasSubject() && encounter.getSubject().getReference() != null) {
+                        String refPatient = encounter.getSubject().getReference().replace("Patient/", "");
+                        Patient patient = fhirClient.read().resource(Patient.class).withId(refPatient).execute();
+                        trat.put("nombrePaciente", patient.hasName() ? patient.getNameFirstRep().getText() : "Desconocido");
+                        trat.put("rut", patient.hasIdentifier() ? patient.getIdentifierFirstRep().getValue() : "Sin RUT");
+                    }
+
+                    // Extraer el médico responsable (Participant)
+                    if (encounter.hasParticipant() && !encounter.getParticipant().isEmpty()) {
+                        String doctorName = "Médico de Turno";
+                        for (Encounter.EncounterParticipantComponent part : encounter.getParticipant()) {
+                            if (part.hasIndividual() && part.getIndividual().hasDisplay()) {
+                                doctorName = part.getIndividual().getDisplay();
+                                break;
+                            }
+                        }
+                        trat.put("medicoResponsable", doctorName);
+                    } else {
+                        trat.put("medicoResponsable", "Médico de Turno");
+                    }
+                } catch (Exception e) {
+                    trat.put("box", "Error al cargar box");
+                    trat.put("nombrePaciente", "Error al cargar paciente");
+                    trat.put("medicoResponsable", "Desconocido");
+                }
+            } else {
+                trat.put("medicoResponsable", "Desconocido");
+            }
+            tratamientos.add(trat);
+        }
+        return tratamientos;
+    }
+
+    public void resolverTratamiento(String idRequest, String estado, Map<String, String> detalles) {
+        MedicationRequest request = fhirClient.read().resource(MedicationRequest.class).withId(idRequest).execute();
+        
+        MedicationAdministration admin = new MedicationAdministration();
+        admin.setSubject(request.getSubject());
+        admin.setContext(request.getEncounter());
+        admin.setRequest(new Reference("MedicationRequest/" + idRequest));
+        admin.setMedication(request.getMedicationCodeableConcept());
+        admin.setEffective(new DateTimeType(new java.util.Date()));
+        
+        if ("administrado".equalsIgnoreCase(estado)) {
+            admin.setStatus(MedicationAdministration.MedicationAdministrationStatus.COMPLETED);
+            
+            MedicationAdministration.MedicationAdministrationDosageComponent dosage = new MedicationAdministration.MedicationAdministrationDosageComponent();
+            if (detalles.containsKey("dosis")) {
+                dosage.setText(detalles.get("dosis"));
+            }
+            if (detalles.containsKey("via")) {
+                dosage.setRoute(new CodeableConcept().setText(detalles.get("via")));
+            }
+            if (detalles.containsKey("tecnica")) {
+                dosage.setMethod(new CodeableConcept().setText(detalles.get("tecnica")));
+            }
+            admin.setDosage(dosage);
+            
+        } else if ("rechazado".equalsIgnoreCase(estado)) {
+            admin.setStatus(MedicationAdministration.MedicationAdministrationStatus.NOTDONE);
+            if (detalles.containsKey("motivo")) {
+                admin.addStatusReason(new CodeableConcept().setText(detalles.get("motivo")));
+            }
+        } else {
+            throw new RuntimeException("Estado inválido. Debe ser 'administrado' o 'rechazado'.");
+        }
+        
+        fhirClient.create().resource(admin).execute();
+        
+        // Actualizamos el request a completed
+        request.setStatus(MedicationRequest.MedicationRequestStatus.COMPLETED);
+        fhirClient.update().resource(request).execute();
     }
 }

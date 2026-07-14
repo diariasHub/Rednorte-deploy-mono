@@ -56,6 +56,12 @@ class AppointmentService {
     return appointmentsRemote.update(id, dto);
   }
 
+  updateTime(id: string, date: string, time: string): Promise<any> {
+    const startDate = new Date(`${date}T${time}:00`);
+    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+    return appointmentsRemote.updateTime(id, startDate.toISOString(), endDate.toISOString());
+  }
+
   cancel(id: string): Promise<void> {
     return appointmentsRemote.cancel(id);
   }

@@ -3,8 +3,12 @@ import { LoginView } from './app/components/pages/1. Login/Login';
 import { Header } from './app/components/layout/Header';
 import { Sidebar } from './app/components/layout/Sidebar';
 import { DashboardView } from './app/components/pages/2. Dashboards/DashboardView';
+import { DashboardNurse } from './app/components/pages/2. Dashboards/DashboardNurse';
+import { DashboardDoctor } from './app/components/pages/2. Dashboards/DashboardDoctor';
+import { DoctorScheduleView } from './app/components/pages/2. Dashboards/DoctorScheduleView';
 import { AppointmentsView } from './app/components/pages/3. AgendaMedica/AppointmentsView';
 import { WaitingListView } from './app/components/pages/5. ListaEspera/WaitingListView';
+import { NurseTreatmentsView } from './app/components/pages/5. ListaEspera/NurseTreatmentsView';
 import { FacilitiesView } from './app/components/pages/6. CentrosAtencion/FacilitiesView';
 import { NotificationsView } from './app/components/pages/4. Notificaciones/NotificationsView';
 import { AtencionClinicaView } from './app/components/pages/10. AtencionClinica/AtencionClinicaView';
@@ -16,10 +20,15 @@ import { Toaster } from './app/components/ui/sonner';
 import { Reservahoraview } from './app/components/pages/8. Reservas/Reservahoraview';
 import { UrgenciasView } from './app/components/pages/9. Urgencias/UrgenciasView';
 import { PublicUrgenciaView } from './app/components/pages/9. Urgencias/PublicUrgenciaView';
+import { ConfirmacionView } from './app/components/pages/8. Reservas/ConfirmacionView';
 
 // SE ELIMINÓ LA IMPORTACIÓN ROTA DE FICHA CLINICA AQUÍ
 
 export default function App() {
+  if (window.location.pathname === '/confirmar') {
+    return <ConfirmacionView />;
+  }
+
   // 1. Estados de Autenticación
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
@@ -53,7 +62,7 @@ export default function App() {
     localStorage.setItem('userRole', normalizedRole);
     
     setShowLogin(false);
-    setActiveView('dashboard');
+    setActiveView(normalizedRole === 'ENFERMERO' ? 'triage' : 'dashboard');
   };
 
   const handleLogout = () => {
@@ -97,28 +106,35 @@ export default function App() {
 
   // ================= RENDERIZADO PRIVADO (Logeado) =================
   const renderView = () => {
+    const handleIrAAtencion = (encounterId: string, appointmentId: string, patientId: string, patientName: string, patientRut: string, patientAge: string) => {  
+      setActiveEncounterId(encounterId);
+      setActiveAppointmentId(appointmentId);
+      setActivePatientId(patientId);
+      setActivePatientName(patientName);
+      setActivePatientRut(patientRut);
+      setActivePatientAge(patientAge);
+      setActiveView('atencion-clinica');
+    };
+
     switch (activeView) {
       case 'dashboard':
       return (
         <DashboardView 
           initialRole={userRole as any} 
           onReserva={() => setActiveView('reserva')} 
-          // 👇 Actualiza esta función
-          onIrAAtencion={(encounterId: string, appointmentId: string, patientId: string, patientName: string, patientRut: string, patientAge: string) => {  
-          setActiveEncounterId(encounterId);
-          setActiveAppointmentId(appointmentId);
-          setActivePatientId(patientId);
-          setActivePatientName(patientName); // <-- GUARDAMOS
-          setActivePatientRut(patientRut);   // <-- GUARDAMOS
-          setActivePatientAge(patientAge);
-          setActiveView('atencion-clinica');
-        }}
+          onIrAAtencion={handleIrAAtencion}
         />
       );
       case 'appointments':
         return <AppointmentsView />;
       case 'waiting-list':
         return <WaitingListView />;
+      case 'nurse-treatments':
+        return (
+          <div className="p-4 md:p-6 max-w-7xl mx-auto">
+            <NurseTreatmentsView />
+          </div>
+        );
       case 'facilities':
         return <FacilitiesView />;
       case 'notifications':
@@ -132,10 +148,19 @@ export default function App() {
         );
       case 'reserva':
         return <Reservahoraview onBack={() => setActiveView('dashboard')} />;
+      case 'triage':
+        return (
+          <div className="p-4 md:p-6 max-w-7xl mx-auto">
+            <DashboardNurse />
+          </div>
+        );
       case 'urgencias':
-        return <UrgenciasView />;
+        return <DashboardDoctor onIrAAtencion={handleIrAAtencion} mode="urgencias" />;
+      case 'agenda-medica':
+        return <DashboardDoctor onIrAAtencion={handleIrAAtencion} mode="agenda" />;
+      case 'reserva-horaria':
+        return <DoctorScheduleView />;
       
-      // CORREGIDO AQUÍ: Reemplazamos el componente que no existe por un mensaje temporal
       case 'atencion-clinica':
       return (
         <AtencionClinicaView 

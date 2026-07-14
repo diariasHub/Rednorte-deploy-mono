@@ -21,6 +21,19 @@ services:
       replicas: 1
 
   # -----------------------------------------------------------
+  # 1.5 CACHE (Redis)
+  # -----------------------------------------------------------
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - rednorte-network
+    deploy:
+      replicas: 1
+
+  # -----------------------------------------------------------
   # 2. CAPA CENTRAL DEL MODELO CLÍNICO (HAPI FHIR Server)
   # -----------------------------------------------------------
   hapi-fhir:
@@ -76,7 +89,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
   ms-agenda:
     build: ../SPS-ms-agenda-profesional
     image: dieaz/ms-agenda-profesional:latest
@@ -86,12 +99,20 @@ services:
     environment:
       - FHIR_SERVER_URL=http://hapi-fhir:8080/fhir
       - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
+      - DB_URL=jdbc:postgresql://postgres:5432/hapi_fhir
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
     depends_on:
       - hapi-fhir
+      - postgres
+      - redis
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
   ms-ficha-clinica:
     build: ../SPS-ms-ficha-clinica
     image: dieaz/ms-ficha-clinica:latest
@@ -114,7 +135,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
   ms-login-user:
     restart: always
@@ -130,7 +151,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
   ms-usuarios:
     restart: always
@@ -153,7 +174,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
 
   ms-urgencias-flujo:
@@ -171,7 +192,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
   ms-reservas-citas:
     restart: always
@@ -192,7 +213,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
   ms-notificaciones:
     restart: always
@@ -207,13 +228,14 @@ services:
       - DB_URL=jdbc:postgresql://postgres:5432/hapi_fhir
       - DB_USER=postgres
       - DB_PASSWORD=postgres
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://ms-service-discovery:8761/eureka/
     depends_on:
       - hapi-fhir
       - postgres
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
   ms-api-gateway:
     restart: always
@@ -233,10 +255,11 @@ services:
       - ms-service-discovery
       - ms-reservas-citas
       - ms-notificaciones
+      - redis
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
   ms-rednorte-front:
     restart: always
     build: ../SPS-rednorte-frontend
@@ -249,7 +272,7 @@ services:
     networks:
       - rednorte-network
     deploy:
-      replicas: 2
+      replicas: 1
 
 # -----------------------------------------------------------
 # VOLÚMENES Y REDES
@@ -260,5 +283,5 @@ volumes:
 
 networks:
   rednorte-network:
-    driver: overlay
+    driver: bridge
     attachable: true
